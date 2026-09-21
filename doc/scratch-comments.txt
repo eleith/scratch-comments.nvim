@@ -103,9 +103,11 @@ down a range. The signs share the column with plugins like gitsigns and can
 cover their signs; |:CommentToggle| hides ours when you need to see theirs.
 
                                                          *ScratchCommentSign*
-The signs use ScratchCommentSign, which links to |hl-DiagnosticInfo|. To
-change it: >lua
-    vim.api.nvim_set_hl(0, "ScratchCommentSign", { fg = "#d7a65f" })
+The signs use ScratchCommentSign, which links to |hl-Todo|. To change it: >lua
+    vim.api.nvim_set_hl(0, "ScratchCommentSign", {
+      fg = "#2fafff",
+      bg = "#004065",
+    })
 <
 
 ==============================================================================

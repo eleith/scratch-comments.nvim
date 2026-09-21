@@ -111,11 +111,11 @@ with no comment.
 
 ## configuration
 
-the signs use the `ScratchCommentSign` highlight, which links to `DiagnosticInfo`.
+the signs use the `ScratchCommentSign` highlight, which links to `Todo`.
 to change it:
 
 ```lua
-vim.api.nvim_set_hl(0, "ScratchCommentSign", { fg = "#d7a65f" })
+vim.api.nvim_set_hl(0, "ScratchCommentSign", { fg = "#2fafff", bg = "#004065" })
 ```
 
 ## lua API
