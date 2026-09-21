@@ -20,8 +20,6 @@ local function visual_range()
   return vim.fn.line("v"), vim.fn.line(".")
 end
 
----Comments are keyed by anchor: commenting on the same lines again edits that
----comment; any other range, including one that overlaps or nests, adds one.
 ---@param bufnr integer
 ---@param start_line integer
 ---@param end_line integer
@@ -34,16 +32,15 @@ local function find_anchor(bufnr, start_line, end_line)
   end)
 end
 
----@param bufnr integer
----@param line integer
 ---@return ScratchCommentView[]
-local function find_covering(bufnr, line)
+local function cursor_comments()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local line = vim.api.nvim_win_get_cursor(0)[1]
   return state.find_all(function(comment)
     return comment.bufnr == bufnr and comment.start_line <= line and line <= comment.end_line
   end)
 end
 
----Ask for comment text, prefilled when editing. Blank input cancels.
 ---@param existing? ScratchCommentView
 ---@param on_text fun(text: string)
 local function prompt(existing, on_text)
@@ -59,13 +56,11 @@ end
 local function update_text(view, text)
   local comment = state.update(view.id, { comment = text })
   if comment then
-    -- Re-place at the current range so the displayed text is refreshed.
     render.place(comment, view.start_line, view.end_line)
     ui.notify("Updated comment", "info")
   end
 end
 
----Add a comment on a line range, or edit the comment already on that exact anchor.
 ---@param start_line integer
 ---@param end_line integer
 function M.range(start_line, end_line)
@@ -84,7 +79,7 @@ function M.range(start_line, end_line)
       return
     end
 
-    -- The prompt can be asynchronous; the buffer may be gone by now.
+    -- vim.ui.input may be asynchronous; the buffer can be gone by now.
     if not vim.api.nvim_buf_is_valid(bufnr) then
       return
     end
@@ -109,37 +104,41 @@ function M.visual_selection()
   M.range(visual_range())
 end
 
----Resolve the comment to act on at the cursor, asking when several anchors
----cover the cursor line.
+---@param view ScratchCommentView
+---@return string
+local function describe(view)
+  local lines = view.start_line == view.end_line and tostring(view.start_line)
+    or (view.start_line .. "-" .. view.end_line)
+  return "lines " .. lines .. ": " .. view.comment
+end
+
+---@param views ScratchCommentView[]
 ---@param callback fun(view: ScratchCommentView)
-local function at_cursor(callback)
-  local covering = find_covering(vim.api.nvim_get_current_buf(), vim.api.nvim_win_get_cursor(0)[1])
-  if #covering == 0 then
-    ui.notify("No comment at cursor", "info")
+local function choose(views, callback)
+  if #views == 1 then
+    callback(views[1])
     return
   end
-
-  if #covering == 1 then
-    callback(covering[1])
-    return
-  end
-
-  vim.ui.select(covering, {
-    prompt = "Comment: ",
-    format_item = function(comment)
-      local range = comment.start_line == comment.end_line and tostring(comment.start_line)
-        or (comment.start_line .. "-" .. comment.end_line)
-      return "lines " .. range .. ": " .. comment.comment
-    end,
-  }, function(comment)
-    if comment then
-      callback(comment)
+  vim.ui.select(views, { prompt = "Comment: ", format_item = describe }, function(view)
+    if view then
+      callback(view)
     end
   end)
 end
 
+---@param comment ScratchComment
+local function delete(comment)
+  render.clear_all(state.remove_ids({ comment.id }))
+  ui.notify("Deleted comment", "info")
+end
+
 function M.edit_current()
-  at_cursor(function(view)
+  local views = cursor_comments()
+  if #views == 0 then
+    ui.notify("No comment at cursor", "info")
+    return
+  end
+  choose(views, function(view)
     prompt(view, function(text)
       update_text(view, text)
     end)
@@ -147,9 +146,30 @@ function M.edit_current()
 end
 
 function M.delete_current()
-  at_cursor(function(view)
-    render.clear_all(state.remove_ids({ view.id }))
-    ui.notify("Deleted comment", "info")
+  local views = cursor_comments()
+  if #views > 0 then
+    choose(views, delete)
+    return
+  end
+
+  local bufnr = vim.api.nvim_get_current_buf()
+  local orphans = vim.tbl_filter(function(comment)
+    return comment.bufnr == bufnr
+  end, state.orphans())
+  if #orphans == 0 then
+    ui.notify("No comment at cursor", "info")
+    return
+  end
+
+  vim.ui.select(orphans, {
+    prompt = "Delete orphaned comment: ",
+    format_item = function(comment)
+      return comment.comment
+    end,
+  }, function(comment)
+    if comment then
+      delete(comment)
+    end
   end)
 end
 

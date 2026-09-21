@@ -37,7 +37,7 @@ local function sorted(items)
 end
 
 ---@param items ScratchCommentView[]
----@param orphans ScratchComment[] Comments whose lines were deleted; listed last.
+---@param orphans ScratchComment[]
 ---@return string
 function M.render(items, orphans)
   local comments = sorted(vim.deepcopy(items))

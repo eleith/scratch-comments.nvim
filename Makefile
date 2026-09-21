@@ -1,5 +1,4 @@
-# Tools come from PATH: mise locally (see mise.toml), the install steps in CI.
-# Override on the command line, e.g. `make lint LUALS=/path/to/lua-language-server`.
+# Tools come from PATH: mise locally, the nvim image in CI.
 STYLUA ?= stylua
 LUALS  ?= lua-language-server
 NVIM   ?= nvim
@@ -30,10 +29,9 @@ test:
 
 ## lint: lua-language-server diagnostics and type checking over lua/ and tests/
 ##
-## .luarc.json is shared with the editor. CI has no editor to supply Neovim's
-## runtime types, so add $VIMRUNTIME/lua as a library in a build copy.
-## lua-language-server's exit status is kept: the output is saved to a file
-## rather than piped, because a pipe would report the filter's status instead.
+## Outside an editor nothing supplies Neovim's runtime types, so a build copy of
+## .luarc.json adds $VIMRUNTIME/lua. Output goes to a file, not a pipe, so make
+## sees lua-language-server's exit status rather than the filter's.
 lint:
 	@mkdir -p $(BUILD)
 	@$(NVIM) --headless --clean \

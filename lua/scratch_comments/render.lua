@@ -28,19 +28,15 @@ function M.setup(opts)
   vim.api.nvim_set_hl(0, "ScratchCommentVirtual", { link = "Comment", default = true })
 end
 
----Anchor a comment to a line range, or move its existing mark there. The mark
----spans the whole range, so Neovim moves it with edits above and grows or
----shrinks it with edits inside.
----
----It ends at the start of the line after the range, so it includes the line
----breaks: rewriting a line's text keeps the comment, and only deleting the
----lines themselves orphans it (`invalidate` hides the mark, undo restores it).
 ---@param comment ScratchComment
----@param start_line integer 1-based, inclusive.
----@param end_line integer 1-based, inclusive.
+---@param start_line integer
+---@param end_line integer
 function M.place(comment, start_line, end_line)
   comment.extmark_id = vim.api.nvim_buf_set_extmark(comment.bufnr, namespace, start_line - 1, 0, {
     id = comment.extmark_id,
+    -- Ending at the start of the next line includes the line breaks, so
+    -- rewriting a line's text keeps the mark and only deleting the lines
+    -- invalidates it.
     end_row = end_line,
     end_col = 0,
     invalidate = true,
@@ -58,7 +54,7 @@ function M.place(comment, start_line, end_line)
 end
 
 ---@param comment ScratchComment
----@return integer? row 0-based start row; nil when the mark is gone.
+---@return integer? row
 ---@return vim.api.keyset.extmark_details? details
 local function get_mark(comment)
   if not comment.extmark_id or not vim.api.nvim_buf_is_valid(comment.bufnr) then
@@ -73,20 +69,19 @@ local function get_mark(comment)
   return mark[1], mark[3]
 end
 
----The lines a comment covers now.
 ---@param comment ScratchComment
----@return integer? start_line 1-based, inclusive; nil when orphaned or the mark is gone.
----@return integer? end_line 1-based, inclusive.
+---@return integer? start_line
+---@return integer? end_line
 function M.range(comment)
   local row, details = get_mark(comment)
   if not row or not details or details.invalid then
     return nil, nil
   end
-  -- The mark ends at the start of the line after the range.
+  -- end_row is the line after the range: as a 0-based row it is the range's
+  -- last line numbered from 1.
   return row + 1, details.end_row
 end
 
----Whether every line a comment covered has been deleted.
 ---@param comment ScratchComment
 ---@return boolean
 function M.is_orphaned(comment)

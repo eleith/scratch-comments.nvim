@@ -25,14 +25,10 @@ function M.input(prompt, default, callback)
   end)
 end
 
----Browse comments by populating the quickfix list.
----
----Quickfix is Neovim's interop format for "a list of places in files". Writing
----to it means vanilla `:copen` works, and every quickfix front-end the user has
----installed -- trouble.nvim, nvim-bqf, Snacks.picker.qflist, :Telescope
----quickfix -- displays it without this plugin knowing they exist.
+-- Quickfix rather than a picker: any quickfix front-end (Trouble, Snacks,
+-- Telescope, nvim-bqf) can display it.
 ---@param items ScratchCommentView[]
----@param orphans ScratchComment[] Listed last, with no line: theirs were deleted.
+---@param orphans ScratchComment[]
 function M.list(items, orphans)
   if #items + #orphans == 0 then
     M.notify("No comments", "info")

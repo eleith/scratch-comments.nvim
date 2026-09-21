@@ -1,6 +1,3 @@
--- Anchors reflow: a comment's lines and quoted text are read from the buffer as
--- it is now, so they follow edits above, inside and to the commented text.
-
 local scratch = require("scratch_comments")
 local state = require("scratch_comments.state")
 
@@ -36,13 +33,11 @@ inputs = { "a comment on the fox" }
 vim.cmd("Comment")
 
 local function only()
-  return state.snapshot()[1]
+  return state.anchored()[1]
 end
 
--- baseline
 assert_equal(only().start_line, 3, "comment should anchor to line 3")
 
--- insert above: the anchored text moves from line 3 to line 6
 vim.api.nvim_buf_set_lines(0, 0, 0, false, { "new a", "new b", "new c" })
 
 assert_equal(only().start_line, 6, "start_line must follow the text when lines are inserted above")
@@ -53,9 +48,6 @@ assert_equal(
   "export must report the current line"
 )
 
--- edit the anchored text: the snippet must reflect what is there now. This uses
--- nvim_buf_set_text, as editing and LSP edits do; replacing whole lines with
--- nvim_buf_set_lines is a known limitation that moves the mark's start.
 vim.api.nvim_buf_set_text(0, 5, 4, 5, 9, { "slow" })
 assert_equal(
   only().snippet,
@@ -63,11 +55,9 @@ assert_equal(
   "snippet must be read live, not frozen at creation"
 )
 
--- delete lines above: the anchor moves back up
 vim.api.nvim_buf_set_lines(0, 0, 3, false, {})
 assert_equal(only().start_line, 3, "start_line must follow the text when lines above are deleted")
 
--- a range anchor must track its end, not just its start
 vim.api.nvim_buf_set_lines(0, 0, -1, false, { "a", "b", "c", "d", "e" })
 state.clear()
 inputs = { "a comment on b through d" }

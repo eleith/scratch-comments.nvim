@@ -44,7 +44,6 @@ local function extmark_at(line)
   fail("no extmark found at line " .. line)
 end
 
--- Drive vim.ui.input and vim.ui.select from a queue.
 local inputs = {}
 ---@diagnostic disable-next-line: duplicate-set-field -- test fake
 vim.ui.input = function(_, callback)
@@ -68,7 +67,6 @@ end
 vim.cmd.edit("README.md")
 vim.api.nvim_win_set_cursor(0, { 1, 0 })
 
--- add
 inputs = { "first comment" }
 vim.cmd("Comment")
 assert_equal(count(), 1, ":Comment should create a comment")
@@ -76,20 +74,17 @@ assert_contains(scratch.render(), "## README.md")
 assert_contains(scratch.render(), "first comment")
 assert_equal(extmark_at(1).sign_text, "C>", "sign text should be rendered")
 
--- same anchor edits
 inputs = { "edited comment" }
 vim.cmd("Comment")
 assert_equal(count(), 1, "the same anchor should edit, not duplicate")
 assert_contains(scratch.render(), "edited comment")
 assert_not_contains(scratch.render(), "first comment")
 
--- a different, overlapping anchor adds
 inputs = { "range comment" }
 vim.cmd("1,3Comment")
 assert_equal(count(), 2, "a different anchor should add a second comment")
 assert_contains(scratch.render(), "lines 1-3")
 
--- edit disambiguates when several anchors cover the cursor
 vim.api.nvim_win_set_cursor(0, { 1, 0 })
 selections = { 2 }
 inputs = { "picked the range" }
@@ -97,18 +92,15 @@ vim.cmd("CommentEdit")
 assert_equal(count(), 2, ":CommentEdit should not duplicate")
 assert_contains(scratch.render(), "picked the range")
 
--- export copies without clearing
 vim.cmd("CommentExport")
 assert_contains(copied or "", "picked the range", ":CommentExport should copy rendered markdown")
 assert_equal(count(), 2, ":CommentExport must not clear comments")
 
--- delete at cursor
 vim.api.nvim_win_set_cursor(0, { 1, 0 })
 selections = { 1 }
 vim.cmd("CommentDelete")
 assert_equal(count(), 1, ":CommentDelete should remove one comment")
 
--- clear
 vim.cmd("CommentClear")
 assert_equal(count(), 0, ":CommentClear should remove every comment")
 assert_equal(
@@ -117,7 +109,6 @@ assert_equal(
   ":CommentClear should remove extmarks"
 )
 
--- :CommentList populates quickfix so any quickfix front-end can show it
 inputs = { "quickfix check" }
 vim.cmd("Comment")
 vim.cmd("CommentList")

@@ -1,7 +1,3 @@
--- Orphans: deleting every line a comment covers orphans it. Orphans are kept,
--- listed and exported separately, and undo re-anchors them. Rewriting a line's
--- text does not orphan its comment.
-
 local scratch = require("scratch_comments")
 local state = require("scratch_comments.state")
 
@@ -33,6 +29,13 @@ vim.ui.input = function(_, callback)
   callback(table.remove(inputs, 1))
 end
 
+local offered = {}
+---@diagnostic disable-next-line: duplicate-set-field -- test fake
+vim.ui.select = function(items, _, callback)
+  offered = items
+  callback(items[1])
+end
+
 -- Headless edits share one undo block unless it is broken explicitly.
 local function undo_break()
   vim.o.undolevels = vim.o.undolevels
@@ -46,15 +49,13 @@ vim.api.nvim_win_set_cursor(0, { 3, 0 })
 inputs = { "a comment on the fox" }
 vim.cmd("Comment")
 
--- rewriting the whole line keeps the comment
 vim.cmd("normal! ccthe slow fox")
-assert_equal(#state.snapshot(), 1, "rewriting a line must keep its comment anchored")
+assert_equal(#state.anchored(), 1, "rewriting a line must keep its comment anchored")
 assert_equal(#state.orphans(), 0, "rewriting a line must not orphan its comment")
 
--- deleting the line orphans it
 undo_break()
 vim.cmd("3d")
-assert_equal(#state.snapshot(), 0, "a comment whose lines are deleted is not anchored")
+assert_equal(#state.anchored(), 0, "a comment whose lines are deleted is not anchored")
 assert_equal(#state.orphans(), 1, "a comment whose lines are deleted is orphaned")
 
 local markdown = scratch.render()
@@ -67,13 +68,18 @@ assert_equal(#entries, 1, "the list must include the orphan")
 assert_contains(entries[1].text, "[orphaned]", "the list must mark the orphan")
 vim.cmd("cclose")
 
--- undo re-anchors it
 undo_break()
 vim.cmd("silent undo")
 assert_equal(#state.orphans(), 0, "undo must re-anchor the orphan")
-assert_equal(state.snapshot()[1].start_line, 3, "undo must restore the comment's line")
+assert_equal(state.anchored()[1].start_line, 3, "undo must restore the comment's line")
 
--- deleting part of a range shrinks it instead of orphaning it
+undo_break()
+vim.cmd("3d")
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+vim.cmd("CommentDelete")
+assert_equal(#offered, 1, ":CommentDelete must offer the orphan when no comment is at the cursor")
+assert_equal(#state.orphans(), 0, ":CommentDelete must delete the chosen orphan")
+
 state.clear()
 vim.api.nvim_buf_set_lines(0, 0, -1, false, { "a", "b", "c", "d", "e" })
 inputs = { "a comment on b through d" }
@@ -81,6 +87,6 @@ vim.cmd("2,4Comment")
 undo_break()
 vim.cmd("3d")
 assert_equal(#state.orphans(), 0, "deleting part of a range must not orphan the comment")
-assert_equal(state.snapshot()[1].end_line, 3, "deleting part of a range shrinks it")
+assert_equal(state.anchored()[1].end_line, 3, "deleting part of a range shrinks it")
 
 print("orphans: ok")

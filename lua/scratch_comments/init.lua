@@ -37,10 +37,9 @@ function M.delete()
 end
 
 function M.list()
-  ui.list(state.snapshot(), state.orphans())
+  ui.list(state.anchored(), state.orphans())
 end
 
----Render pending comments.
 ---@param format? "markdown"
 ---@return string
 function M.render(format)
@@ -48,12 +47,11 @@ function M.render(format)
   if format ~= "markdown" then
     error("unknown format: " .. tostring(format))
   end
-  return markdown.render(state.snapshot(), state.orphans())
+  return markdown.render(state.anchored(), state.orphans())
 end
 
----Copy pending comments to the clipboard. Never clears: see :ScratchClear.
 function M.export()
-  local items, orphans = state.snapshot(), state.orphans()
+  local items, orphans = state.anchored(), state.orphans()
   local count = #items + #orphans
   if count == 0 then
     ui.notify("No comments to export", "info")

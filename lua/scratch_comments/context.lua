@@ -20,14 +20,14 @@ local function dirname(path)
 end
 
 ---@param path string
----@return string? root Nil outside a Git repository.
+---@return string? root
 function M.git_root(path)
   return run({ "git", "-C", dirname(path), "rev-parse", "--show-toplevel" })
 end
 
 ---@param root string?
 ---@param path string
----@return string path Relative to root when inside it, otherwise unchanged.
+---@return string path
 function M.relative_path(root, path)
   if not root or root == "" then
     return path

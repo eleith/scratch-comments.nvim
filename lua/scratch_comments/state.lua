@@ -5,17 +5,16 @@ local M = {}
 ---@class ScratchComment
 ---@field id string
 ---@field bufnr integer
----@field extmark_id? integer Set once the comment is anchored.
+---@field extmark_id? integer
 ---@field comment string
----@field file_path string Absolute path.
----@field relative_path string Relative to the Git root, or absolute outside a repository.
----@field timestamp string UTC time the comment was made.
+---@field file_path string
+---@field relative_path string
+---@field timestamp string
 
----A comment with its anchor read from the buffer as it is now.
 ---@class ScratchCommentView : ScratchComment
 ---@field start_line integer 1-based, inclusive.
 ---@field end_line integer 1-based, inclusive.
----@field snippet string The commented lines.
+---@field snippet string
 
 ---@type ScratchComment[]
 local items = {}
@@ -49,14 +48,11 @@ function M.add(fields)
   return comment
 end
 
----Every anchored comment with its line range and text read from the buffer
----now, so positions follow edits. Orphans are not included: see M.orphans.
 ---@return ScratchCommentView[]
-function M.snapshot()
+function M.anchored()
   local views = {}
   for _, comment in ipairs(items) do
     local start_line, end_line = render.range(comment)
-    -- No range: the comment is orphaned, or its buffer was unloaded.
     if start_line and end_line then
       local view = vim.deepcopy(comment) --[[@as ScratchCommentView]]
       view.start_line = start_line
@@ -71,17 +67,15 @@ function M.snapshot()
   return views
 end
 
----Comments whose lines have all been deleted. They are kept, not dropped:
----undo restores them, and exports list them separately.
 ---@return ScratchComment[]
 function M.orphans()
   return vim.tbl_filter(render.is_orphaned, items)
 end
 
 ---@param predicate fun(comment: ScratchCommentView): boolean
----@return ScratchCommentView[] matches Ordered by position.
+---@return ScratchCommentView[]
 function M.find_all(predicate)
-  local matches = vim.tbl_filter(predicate, M.snapshot())
+  local matches = vim.tbl_filter(predicate, M.anchored())
   table.sort(matches, compare_position)
   return matches
 end

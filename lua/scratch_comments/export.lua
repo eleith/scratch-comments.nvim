@@ -1,6 +1,5 @@
 local M = {}
 
----Copy text to the system clipboard.
 ---@param text string
 ---@return boolean
 function M.copy(text)
