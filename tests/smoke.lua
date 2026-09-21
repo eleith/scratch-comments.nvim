@@ -46,17 +46,20 @@ end
 
 -- Drive vim.ui.input and vim.ui.select from a queue.
 local inputs = {}
+---@diagnostic disable-next-line: duplicate-set-field -- test fake
 vim.ui.input = function(_, callback)
   callback(table.remove(inputs, 1))
 end
 
 local selections = {}
+---@diagnostic disable-next-line: duplicate-set-field -- test fake
 vim.ui.select = function(items, _, callback)
   local index = table.remove(selections, 1) or 1
   callback(items[index])
 end
 
 local copied
+---@diagnostic disable-next-line: duplicate-set-field -- test fake
 require("scratch_comments.export").copy = function(text)
   copied = text
   return true

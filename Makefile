@@ -1,20 +1,16 @@
-# Prefer mason-installed tooling (local dev), fall back to PATH (CI).
-MASON := $(HOME)/.local/share/nvim/mason/bin
-tool = $(if $(wildcard $(MASON)/$(1)),$(MASON)/$(1),$(1))
+# Tools come from PATH: mise locally (see mise.toml), the install steps in CI.
+# Override on the command line, e.g. `make lint LUALS=/path/to/lua-language-server`.
+STYLUA ?= stylua
+LUALS  ?= lua-language-server
+NVIM   ?= nvim
+BUILD  := .build
 
-STYLUA   := $(call tool,stylua)
-LUACHECK := $(call tool,luacheck)
-LUALS    := $(call tool,lua-language-server)
-
-NVIM ?= nvim
-BUILD := .build
-
-.PHONY: all check test test-pending lint fmt fmt-check types clean
+.PHONY: all check test test-pending lint fmt fmt-check clean
 
 all: check
 
 ## check: everything CI runs
-check: lint fmt-check types test
+check: lint fmt-check test
 
 ## test: run the passing suites, each in its own Neovim
 test: PASSING := tests/smoke.lua
@@ -38,9 +34,24 @@ test-pending:
 		-c "lua local ok,e=pcall(dofile,'tests/reflow.lua') if not ok then io.write('FAIL: '..tostring(e)..'\n') end vim.cmd('qa!')" \
 		2>&1 | grep -E '^(FAIL|[a-z]+: ok)' || true
 
-## lint: luacheck
+## lint: lua-language-server diagnostics and type checking over lua/ and tests/
+##
+## .luarc.json is shared with the editor. CI has no editor to supply Neovim's
+## runtime types, so add $VIMRUNTIME/lua as a library in a build copy.
+## lua-language-server's exit status is kept: the output is saved to a file
+## rather than piped, because a pipe would report the filter's status instead.
 lint:
-	@$(LUACHECK) lua/ tests/ --no-color
+	@mkdir -p $(BUILD)
+	@$(NVIM) --headless --clean \
+		-c 'lua local c = vim.json.decode(table.concat(vim.fn.readfile(".luarc.json"), "\n")); c["workspace.library"] = { vim.env.VIMRUNTIME .. "/lua" }; vim.fn.writefile({ vim.json.encode(c) }, "$(BUILD)/luarc.json")' \
+		-c 'qa!'
+	@$(LUALS) --check "$(CURDIR)" --checklevel=Warning \
+		--configpath="$(CURDIR)/$(BUILD)/luarc.json" --logpath="$(CURDIR)/$(BUILD)/luals" \
+		> $(BUILD)/lint.log 2>&1; \
+	status=$$?; \
+	sed -E 's/\x1b\[[0-9;]*m//g' $(BUILD)/lint.log | tr '\r' '\n' \
+		| grep -E '\.lua:[0-9]+|Diagnosis|problem' || true; \
+	exit $$status
 
 ## fmt: format in place
 fmt:
@@ -49,16 +60,6 @@ fmt:
 ## fmt-check: fail if unformatted
 fmt-check:
 	@$(STYLUA) --check lua/ tests/
-
-## types: lua-language-server against the annotations
-types:
-	@mkdir -p $(BUILD)
-	@$(NVIM) --headless -c 'lua io.write(vim.env.VIMRUNTIME)' -c 'qa!' 2>/dev/null > $(BUILD)/runtime
-	@sed 's|"workspace.ignoreDir": \[".git"\]|"workspace.ignoreDir": [".git"], "workspace.library": ["'"$$(cat $(BUILD)/runtime)"'/lua"]|' \
-		.luarc.json > $(BUILD)/luarc.json
-	@$(LUALS) --check "$(CURDIR)/lua" --checklevel=Warning \
-		--configpath="$(CURDIR)/$(BUILD)/luarc.json" --logpath="$(CURDIR)/$(BUILD)/luals" \
-		| tail -5
 
 clean:
 	@rm -rf $(BUILD)

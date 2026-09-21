@@ -1,0 +1,7 @@
+# Pinned to match the CI image, nvim:0.12.1-luals3.19.1-stylua2.5.2
+# (git.eleith.com/eleith/containers). Bump both together.
+[tools]
+neovim = "0.12.1"
+lua = "5.5.1"
+stylua = "2.5.2"
+lua-language-server = "3.19.1"

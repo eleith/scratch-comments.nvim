@@ -1,7 +1,18 @@
 {
   "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
   "runtime.version": "LuaJIT",
+  "runtime.path": ["lua/?.lua", "lua/?/init.lua"],
   "diagnostics.globals": ["vim"],
+  "diagnostics.severity": {
+    "unused-local": "Warning",
+    "unused-function": "Warning",
+    "redefined-local": "Warning",
+    "lowercase-global": "Warning",
+    "unreachable-code": "Warning"
+  },
+  "diagnostics.neededFileStatus": {
+    "unreachable-code": "Any"
+  },
   "workspace.checkThirdParty": false,
-  "workspace.ignoreDir": [".git"]
+  "workspace.ignoreDir": [".git", ".build"]
 }

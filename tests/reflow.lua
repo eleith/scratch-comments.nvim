@@ -25,6 +25,7 @@ end
 
 local text = "the quick brown fox"
 local inputs = {}
+---@diagnostic disable-next-line: duplicate-set-field -- test fake
 vim.ui.input = function(_, callback)
   callback(table.remove(inputs, 1))
 end
