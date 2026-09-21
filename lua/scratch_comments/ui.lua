@@ -32,23 +32,26 @@ end
 ---installed -- trouble.nvim, nvim-bqf, Snacks.picker.qflist, :Telescope
 ---quickfix -- displays it without this plugin knowing they exist.
 ---@param items ScratchCommentView[]
-function M.list(items)
-  if #items == 0 then
+---@param orphans ScratchComment[] Listed last, with no line: theirs were deleted.
+function M.list(items, orphans)
+  if #items + #orphans == 0 then
     M.notify("No comments", "info")
     return
   end
 
-  vim.fn.setqflist({}, " ", {
-    title = "Comments",
-    items = vim.tbl_map(function(comment)
-      return {
-        filename = comment.file_path,
-        lnum = comment.start_line,
-        end_lnum = comment.end_line,
-        text = comment.comment,
-      }
-    end, items),
-  })
+  local entries = vim.tbl_map(function(comment)
+    return {
+      filename = comment.file_path,
+      lnum = comment.start_line,
+      end_lnum = comment.end_line,
+      text = comment.comment,
+    }
+  end, items)
+  for _, comment in ipairs(orphans) do
+    table.insert(entries, { filename = comment.file_path, text = "[orphaned] " .. comment.comment })
+  end
+
+  vim.fn.setqflist({}, " ", { title = "Comments", items = entries })
   vim.cmd.copen()
 end
 

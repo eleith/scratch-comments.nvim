@@ -37,8 +37,9 @@ local function sorted(items)
 end
 
 ---@param items ScratchCommentView[]
+---@param orphans ScratchComment[] Comments whose lines were deleted; listed last.
 ---@return string
-function M.render(items)
+function M.render(items, orphans)
   local comments = sorted(vim.deepcopy(items))
   local lines = { "Comments:", "" }
 
@@ -60,6 +61,19 @@ function M.render(items)
     table.insert(lines, comment.snippet or "")
     table.insert(lines, fence)
     table.insert(lines, "")
+  end
+
+  if #orphans > 0 then
+    table.insert(lines, "## Orphaned")
+    table.insert(lines, "")
+    table.insert(lines, "The lines these comments were on have been deleted.")
+    table.insert(lines, "")
+    for _, comment in ipairs(orphans) do
+      table.insert(lines, "- " .. comment.relative_path .. " (" .. comment.id .. ")")
+      table.insert(lines, "")
+      table.insert(lines, comment.comment)
+      table.insert(lines, "")
+    end
   end
 
   return table.concat(lines, "\n")

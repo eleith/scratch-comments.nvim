@@ -13,7 +13,7 @@ all: check
 check: lint fmt-check test
 
 ## test: run each suite in its own Neovim
-test: SUITES := tests/smoke.lua tests/reflow.lua
+test: SUITES := tests/smoke.lua tests/reflow.lua tests/orphans.lua
 test:
 	@fail=0; \
 	for t in $(SUITES); do \

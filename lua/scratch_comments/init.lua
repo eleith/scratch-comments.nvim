@@ -37,7 +37,7 @@ function M.delete()
 end
 
 function M.list()
-  ui.list(state.snapshot())
+  ui.list(state.snapshot(), state.orphans())
 end
 
 ---Render pending comments.
@@ -48,23 +48,24 @@ function M.render(format)
   if format ~= "markdown" then
     error("unknown format: " .. tostring(format))
   end
-  return markdown.render(state.snapshot())
+  return markdown.render(state.snapshot(), state.orphans())
 end
 
 ---Copy pending comments to the clipboard. Never clears: see :ScratchClear.
 function M.export()
-  local items = state.snapshot()
-  if #items == 0 then
+  local items, orphans = state.snapshot(), state.orphans()
+  local count = #items + #orphans
+  if count == 0 then
     ui.notify("No comments to export", "info")
     return
   end
 
-  if not clipboard.copy(markdown.render(items)) then
+  if not clipboard.copy(markdown.render(items, orphans)) then
     ui.notify("Could not copy to the clipboard; no provider configured?", "error")
     return
   end
 
-  ui.notify("Copied " .. #items .. " comment(s)", "info")
+  ui.notify("Copied " .. count .. " comment(s)", "info")
 end
 
 function M.clear()

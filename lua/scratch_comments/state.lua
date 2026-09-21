@@ -49,14 +49,14 @@ function M.add(fields)
   return comment
 end
 
----Every comment with its line range and text read from the buffer now, so
----positions follow edits.
+---Every anchored comment with its line range and text read from the buffer
+---now, so positions follow edits. Orphans are not included: see M.orphans.
 ---@return ScratchCommentView[]
 function M.snapshot()
   local views = {}
   for _, comment in ipairs(items) do
     local start_line, end_line = render.range(comment)
-    -- No range means the mark is gone: the buffer was unloaded.
+    -- No range: the comment is orphaned, or its buffer was unloaded.
     if start_line and end_line then
       local view = vim.deepcopy(comment) --[[@as ScratchCommentView]]
       view.start_line = start_line
@@ -69,6 +69,13 @@ function M.snapshot()
     end
   end
   return views
+end
+
+---Comments whose lines have all been deleted. They are kept, not dropped:
+---undo restores them, and exports list them separately.
+---@return ScratchComment[]
+function M.orphans()
+  return vim.tbl_filter(render.is_orphaned, items)
 end
 
 ---@param predicate fun(comment: ScratchCommentView): boolean

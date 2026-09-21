@@ -31,16 +31,19 @@ end
 ---Anchor a comment to a line range, or move its existing mark there. The mark
 ---spans the whole range, so Neovim moves it with edits above and grows or
 ---shrinks it with edits inside.
+---
+---It ends at the start of the line after the range, so it includes the line
+---breaks: rewriting a line's text keeps the comment, and only deleting the
+---lines themselves orphans it (`invalidate` hides the mark, undo restores it).
 ---@param comment ScratchComment
 ---@param start_line integer 1-based, inclusive.
 ---@param end_line integer 1-based, inclusive.
 function M.place(comment, start_line, end_line)
-  local last_line = vim.api.nvim_buf_get_lines(comment.bufnr, end_line - 1, end_line, false)[1]
-
   comment.extmark_id = vim.api.nvim_buf_set_extmark(comment.bufnr, namespace, start_line - 1, 0, {
     id = comment.extmark_id,
-    end_row = end_line - 1,
-    end_col = #last_line,
+    end_row = end_line,
+    end_col = 0,
+    invalidate = true,
     sign_text = config.sign_text,
     sign_hl_group = config.sign_hl_group,
     virt_text = {
@@ -54,25 +57,41 @@ function M.place(comment, start_line, end_line)
   })
 end
 
----The lines a comment covers now.
 ---@param comment ScratchComment
----@return integer? start_line 1-based, inclusive; nil when the mark is gone.
----@return integer? end_line 1-based, inclusive.
-function M.range(comment)
+---@return integer? row 0-based start row; nil when the mark is gone.
+---@return vim.api.keyset.extmark_details? details
+local function get_mark(comment)
   if not comment.extmark_id or not vim.api.nvim_buf_is_valid(comment.bufnr) then
     return nil, nil
   end
-
   local mark = vim.api.nvim_buf_get_extmark_by_id(
     comment.bufnr,
     namespace,
     comment.extmark_id,
     { details = true }
   )
-  if #mark == 0 then
+  return mark[1], mark[3]
+end
+
+---The lines a comment covers now.
+---@param comment ScratchComment
+---@return integer? start_line 1-based, inclusive; nil when orphaned or the mark is gone.
+---@return integer? end_line 1-based, inclusive.
+function M.range(comment)
+  local row, details = get_mark(comment)
+  if not row or not details or details.invalid then
     return nil, nil
   end
-  return mark[1] + 1, mark[3].end_row + 1
+  -- The mark ends at the start of the line after the range.
+  return row + 1, details.end_row
+end
+
+---Whether every line a comment covered has been deleted.
+---@param comment ScratchComment
+---@return boolean
+function M.is_orphaned(comment)
+  local _, details = get_mark(comment)
+  return details ~= nil and details.invalid == true
 end
 
 ---@param comment ScratchComment
