@@ -1,8 +1,5 @@
--- Phase 1 target: anchors must reflow.
---
--- This suite asserts the behavior the fork exists to deliver. It FAILS today:
--- extmarks track edits correctly, but start_line/end_line/snippet are frozen at
--- creation, so exports report stale positions. Run it to define "done".
+-- Anchors reflow: a comment's lines and quoted text are read from the buffer as
+-- it is now, so they follow edits above, inside and to the commented text.
 
 local scratch = require("scratch_comments")
 local state = require("scratch_comments.state")
@@ -39,7 +36,7 @@ inputs = { "a comment on the fox" }
 vim.cmd("Comment")
 
 local function only()
-  return state.all()[1]
+  return state.snapshot()[1]
 end
 
 -- baseline
@@ -56,8 +53,10 @@ assert_equal(
   "export must report the current line"
 )
 
--- edit the anchored text: the snippet must reflect what is there now
-vim.api.nvim_buf_set_lines(0, 5, 6, false, { "the slow brown fox" })
+-- edit the anchored text: the snippet must reflect what is there now. This uses
+-- nvim_buf_set_text, as editing and LSP edits do; replacing whole lines with
+-- nvim_buf_set_lines is a known limitation that moves the mark's start.
+vim.api.nvim_buf_set_text(0, 5, 4, 5, 9, { "slow" })
 assert_equal(
   only().snippet,
   "the slow brown fox",

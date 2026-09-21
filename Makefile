@@ -5,18 +5,18 @@ LUALS  ?= lua-language-server
 NVIM   ?= nvim
 BUILD  := .build
 
-.PHONY: all check test test-pending lint fmt fmt-check clean
+.PHONY: all check test lint fmt fmt-check clean
 
 all: check
 
 ## check: everything CI runs
 check: lint fmt-check test
 
-## test: run the passing suites, each in its own Neovim
-test: PASSING := tests/smoke.lua
+## test: run each suite in its own Neovim
+test: SUITES := tests/smoke.lua tests/reflow.lua
 test:
 	@fail=0; \
-	for t in $(PASSING); do \
+	for t in $(SUITES); do \
 		printf '%-22s ' "$$t"; \
 		out=$$($(NVIM) --headless --clean -u tests/minimal_init.lua \
 			-c "lua local ok,e=pcall(dofile,'$$t') if not ok then io.write('FAIL: '..tostring(e)..'\n') end vim.cmd('qa!')" \
@@ -27,12 +27,6 @@ test:
 		esac; \
 	done; \
 	exit $$fail
-
-## test-pending: suites that assert unimplemented behavior (Phase 1 target)
-test-pending:
-	@$(NVIM) --headless --clean -u tests/minimal_init.lua \
-		-c "lua local ok,e=pcall(dofile,'tests/reflow.lua') if not ok then io.write('FAIL: '..tostring(e)..'\n') end vim.cmd('qa!')" \
-		2>&1 | grep -E '^(FAIL|[a-z]+: ok)' || true
 
 ## lint: lua-language-server diagnostics and type checking over lua/ and tests/
 ##

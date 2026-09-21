@@ -36,7 +36,7 @@ local function sorted(items)
   return items
 end
 
----@param items ScratchComment[]
+---@param items ScratchCommentView[]
 ---@return string
 function M.render(items)
   local comments = sorted(vim.deepcopy(items))

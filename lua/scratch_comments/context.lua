@@ -19,10 +19,15 @@ local function dirname(path)
   return vim.fn.fnamemodify(path, ":p:h")
 end
 
+---@param path string
+---@return string? root Nil outside a Git repository.
 function M.git_root(path)
   return run({ "git", "-C", dirname(path), "rev-parse", "--show-toplevel" })
 end
 
+---@param root string?
+---@param path string
+---@return string path Relative to root when inside it, otherwise unchanged.
 function M.relative_path(root, path)
   if not root or root == "" then
     return path

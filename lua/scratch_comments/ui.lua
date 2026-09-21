@@ -4,6 +4,8 @@ local function level(name)
   return vim.log.levels[(name or "info"):upper()] or vim.log.levels.INFO
 end
 
+---@param message string
+---@param kind? "info"|"warn"|"error"
 function M.notify(message, kind)
   vim.schedule(function()
     local opts = { title = "scratch-comments" }
@@ -14,6 +16,9 @@ function M.notify(message, kind)
   end)
 end
 
+---@param prompt string
+---@param default? string
+---@param callback fun(value: string?)
 function M.input(prompt, default, callback)
   vim.ui.input({ prompt = prompt, default = default }, function(value)
     callback(value)
@@ -26,7 +31,7 @@ end
 ---to it means vanilla `:copen` works, and every quickfix front-end the user has
 ---installed -- trouble.nvim, nvim-bqf, Snacks.picker.qflist, :Telescope
 ---quickfix -- displays it without this plugin knowing they exist.
----@param items ScratchComment[]
+---@param items ScratchCommentView[]
 function M.list(items)
   if #items == 0 then
     M.notify("No comments", "info")

@@ -21,25 +21,26 @@ local function short_comment(text)
   return value
 end
 
+---@param opts? ScratchDisplayConfig
 function M.setup(opts)
   config = vim.tbl_deep_extend("force", config, opts or {})
   vim.api.nvim_set_hl(0, "ScratchCommentSign", { link = "DiagnosticInfo", default = true })
   vim.api.nvim_set_hl(0, "ScratchCommentVirtual", { link = "Comment", default = true })
 end
 
-function M.show(comment)
-  if not comment.bufnr or not vim.api.nvim_buf_is_valid(comment.bufnr) then
-    return
-  end
+---Anchor a comment to a line range, or move its existing mark there. The mark
+---spans the whole range, so Neovim moves it with edits above and grows or
+---shrinks it with edits inside.
+---@param comment ScratchComment
+---@param start_line integer 1-based, inclusive.
+---@param end_line integer 1-based, inclusive.
+function M.place(comment, start_line, end_line)
+  local last_line = vim.api.nvim_buf_get_lines(comment.bufnr, end_line - 1, end_line, false)[1]
 
-  local line_count = vim.api.nvim_buf_line_count(comment.bufnr)
-  if line_count < 1 then
-    return
-  end
-
-  local line = math.max(0, math.min((comment.start_line or 1) - 1, line_count - 1))
-
-  comment.extmark_id = vim.api.nvim_buf_set_extmark(comment.bufnr, namespace, line, 0, {
+  comment.extmark_id = vim.api.nvim_buf_set_extmark(comment.bufnr, namespace, start_line - 1, 0, {
+    id = comment.extmark_id,
+    end_row = end_line - 1,
+    end_col = #last_line,
     sign_text = config.sign_text,
     sign_hl_group = config.sign_hl_group,
     virt_text = {
@@ -53,6 +54,28 @@ function M.show(comment)
   })
 end
 
+---The lines a comment covers now.
+---@param comment ScratchComment
+---@return integer? start_line 1-based, inclusive; nil when the mark is gone.
+---@return integer? end_line 1-based, inclusive.
+function M.range(comment)
+  if not comment.extmark_id or not vim.api.nvim_buf_is_valid(comment.bufnr) then
+    return nil, nil
+  end
+
+  local mark = vim.api.nvim_buf_get_extmark_by_id(
+    comment.bufnr,
+    namespace,
+    comment.extmark_id,
+    { details = true }
+  )
+  if #mark == 0 then
+    return nil, nil
+  end
+  return mark[1] + 1, mark[3].end_row + 1
+end
+
+---@param comment ScratchComment
 function M.clear(comment)
   if
     comment
@@ -64,12 +87,14 @@ function M.clear(comment)
   end
 end
 
+---@param items ScratchComment[]
 function M.clear_all(items)
   for _, comment in ipairs(items) do
     M.clear(comment)
   end
 end
 
+---@param bufnr integer
 function M.clear_buffer(bufnr)
   if vim.api.nvim_buf_is_valid(bufnr) then
     vim.api.nvim_buf_clear_namespace(bufnr, namespace, 0, -1)

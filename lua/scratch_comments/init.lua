@@ -5,19 +5,6 @@ local render = require("scratch_comments.render")
 local state = require("scratch_comments.state")
 local ui = require("scratch_comments.ui")
 
----@class ScratchComment
----@field id string
----@field repo_root? string
----@field file_path string Absolute file path.
----@field relative_path? string Path relative to the Git root when available.
----@field start_line integer 1-based inclusive line number.
----@field end_line integer 1-based inclusive line number.
----@field snippet string Commented text.
----@field comment string
----@field timestamp string UTC timestamp.
----@field bufnr? integer Runtime-only buffer id.
----@field extmark_id? integer Runtime-only extmark id.
-
 ---@class ScratchDisplayConfig
 ---@field sign_text? string
 ---@field sign_hl_group? string
