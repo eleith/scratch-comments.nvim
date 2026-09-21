@@ -1,0 +1,46 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  LUALS_VERSION: "3.19.1"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install neovim
+        run: |
+          curl -fsSL https://github.com/neovim/neovim/releases/download/stable/nvim-linux-x86_64.tar.gz \
+            | sudo tar xz -C /opt
+          echo "/opt/nvim-linux-x86_64/bin" >> "$GITHUB_PATH"
+
+      - name: install stylua
+        run: |
+          curl -fsSL -o /tmp/stylua.zip \
+            https://github.com/JohnnyMorganz/StyLua/releases/latest/download/stylua-linux-x86_64.zip
+          sudo unzip -qo /tmp/stylua.zip -d /usr/local/bin
+          sudo chmod +x /usr/local/bin/stylua
+
+      - name: install lua-language-server
+        run: |
+          sudo mkdir -p /opt/luals
+          curl -fsSL "https://github.com/LuaLS/lua-language-server/releases/download/${LUALS_VERSION}/lua-language-server-${LUALS_VERSION}-linux-x64.tar.gz" \
+            | sudo tar xz -C /opt/luals
+          echo "/opt/luals/bin" >> "$GITHUB_PATH"
+
+      - name: install luacheck
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq lua5.1 liblua5.1-0-dev luarocks build-essential
+          sudo luarocks install luacheck
+
+      - run: make lint
+      - run: make fmt-check
+      - run: make types
+      - run: make test

@@ -1,0 +1,114 @@
+*scratch-comments.txt*  Scratch comments on lines in any file
+
+==============================================================================
+CONTENTS                                          *scratch-comments-contents*
+
+  1. Introduction ......... |scratch-comments-introduction|
+  2. Commands ............. |scratch-comments-commands|
+  3. Anchors .............. |scratch-comments-anchors|
+  4. Retention ............ |scratch-comments-retention|
+  5. Configuration ........ |scratch-comments-configuration|
+  6. Lua API .............. |scratch-comments-api|
+
+==============================================================================
+1. INTRODUCTION                               *scratch-comments-introduction*
+
+Leave comments on lines in any file you are reading, then copy them all out as
+Markdown to paste into an LLM or hand to a person.
+
+Comments are scratch. They live in the buffer, are never written to disk, and
+go away when you close the buffer or clear them.
+
+Setup is optional if you accept the defaults: >lua
+    require("scratch_comments").setup()
+<
+This plugin sets no mappings. See |scratch-comments-api| to make your own.
+
+=======================================================================================================================================================
+2. COMMANDS                                       *scratch-comments-commands*
+
+                                                                    *:Comment*
+:[range]Comment         Comment on the current line, or on [range]. If a
+                        comment already exists on that exact anchor, edit it.
+
+                                                                *:CommentEdit*
+:CommentEdit            Edit the comment at the cursor. Prompts when more than
+                        one anchor covers the cursor line.
+
+                                                              *:CommentDelete*
+:CommentDelete          Delete the comment at the cursor. Prompts when more
+                        than one anchor covers the cursor line.
+
+                                                                *:CommentList*
+:CommentList            Put every comment in the |quickfix| list and open it.
+                        Any quickfix front-end (trouble.nvim, nvim-bqf,
+                        Snacks.picker.qflist, :Telescope quickfix) displays it.
+
+                                                              *:CommentExport*
+:CommentExport          Copy all comments to the system clipboard as Markdown.
+                        Never clears; see |:CommentClear|.
+
+                                                               *:CommentClear*
+:CommentClear           Delete every comment.
+
+==============================================================================
+3. ANCHORS                                         *scratch-comments-anchors*
+
+A comment is anchored to a file and a line range.
+
+- Commenting on an anchor that already has a comment edits that comment.
+- Commenting on a different anchor adds a new comment, including anchors that
+  overlap or nest. A comment on lines 10-30 and one on line 14 are separate.
+
+==============================================================================
+4. RETENTION                                     *scratch-comments-retention*
+
+Comments are lost when the buffer is wiped (|:bwipeout|) or |:CommentClear| runs.
+Nothing else removes them. |:CommentExport| copies but never clears, so you may
+export as many times as you like.
+
+There is no persistence and no state file. To keep comments, paste an export
+into a file you own.
+
+==============================================================================
+5. CONFIGURATION                             *scratch-comments-configuration*
+
+All options are optional. >lua
+    require("scratch_comments").setup({
+      display = {
+        sign_text = "C>",
+        sign_hl_group = "ScratchCommentSign",
+        virtual_text_prefix = " ",
+        virtual_text_hl_group = "ScratchCommentVirtual",
+        virtual_text_pos = "eol",
+        max_comment_length = 80,
+        priority = 120,
+      },
+    })
+<
+                                                       *ScratchCommentSign*
+                                                    *ScratchCommentVirtual*
+Highlight groups link to |hl-DiagnosticInfo| and |hl-Comment| by default.
+
+==============================================================================
+6. LUA API                                             *scratch-comments-api*
+
+>lua
+    local scratch = require("scratch_comments")
+
+    scratch.setup(opts)
+    scratch.add()         -- current line or command range
+    scratch.add_visual()  -- visual selection
+    scratch.edit()
+    scratch.delete()
+    scratch.list()
+    scratch.render()      -- Markdown string for all comments
+    scratch.export()      -- render and copy to the clipboard
+    scratch.clear()
+<
+Example mappings: >lua
+    vim.keymap.set("n", "<leader>aa", "<Cmd>Comment<CR>")
+    vim.keymap.set("x", "<leader>aa", ":Comment<CR>")
+    vim.keymap.set("n", "<leader>ax", "<Cmd>CommentExport<CR>")
+<
+vim:tw=78:ts=8:noet:ft=help:norl:
