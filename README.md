@@ -36,8 +36,12 @@ comment on a range, or select lines and type `:Comment`:
 :'<,'>Comment
 ```
 
+a window opens in the middle of the screen, with the lines you're commenting on
+at the top and your comment below. write as many lines as you like, then `:wq`
+to save, or `:q!` to cancel.
+
 commented lines get a mark in the sign column: `│` for one line, and `╭` `│` `╰`
-down a range. read the comments on the cursor line:
+down a range. read a comment on the cursor line, in the same window:
 
 ```vim
 :CommentShow
@@ -64,7 +68,7 @@ it, pipe it to a command, or edit it:
 | Command | Does |
 | --- | --- |
 | `:Comment` | Comment on the current line or command range |
-| `:CommentShow` | Show the comments at the cursor in a float |
+| `:CommentShow` | Show the comment at the cursor, with the lines it's on |
 | `:CommentEdit` | Edit the comment at the cursor |
 | `:CommentDelete` | Delete the comment at the cursor, or pick an orphaned one |
 | `:CommentList` | Put comments in the quickfix list and open it |

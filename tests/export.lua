@@ -22,10 +22,9 @@ local function assert_contains(haystack, needle, message)
   end
 end
 
-local inputs = {}
----@diagnostic disable-next-line: duplicate-set-field -- test fake
-vim.ui.input = function(_, callback)
-  callback(table.remove(inputs, 1))
+local function write(comment)
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(comment, "\n"))
+  vim.cmd("wq")
 end
 
 local copied
@@ -40,10 +39,10 @@ vim.cmd.file("export-fixture.lua")
 vim.api.nvim_buf_set_lines(0, 0, -1, false, { "local a = 1", "local b = 2", "local c = 3" })
 local source = vim.api.nvim_get_current_buf()
 
-inputs = { "on c" }
 vim.cmd("3Comment")
-inputs = { "on a" }
+write("on c")
 vim.cmd("1Comment")
+write("on a")
 
 local data = vim.json.decode(scratch.render("json"))
 assert_equal(#data.comments, 2, "json must list every comment")

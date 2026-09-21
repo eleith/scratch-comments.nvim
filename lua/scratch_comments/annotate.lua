@@ -26,21 +26,36 @@ local function cursor_comments()
   end)
 end
 
----@param existing? ScratchCommentView
----@param on_text fun(text: string)
-local function prompt(existing, on_text)
-  ui.input("Comment: ", existing and existing.comment, function(text)
-    if text and vim.trim(text) ~= "" then
-      on_text(text)
-    end
-  end)
+---@param file_path string
+---@param start_line integer
+---@param end_line integer
+---@return string
+local function title(file_path, start_line, end_line)
+  local name = vim.fn.fnamemodify(file_path, ":t")
+  if start_line == end_line then
+    return name .. " · line " .. start_line
+  end
+  return name .. " · lines " .. start_line .. "–" .. end_line
 end
 
 ---@param view ScratchCommentView
----@param text string
-local function update_text(view, text)
-  state.update(view.id, { comment = text })
-  ui.notify("Updated comment", "info")
+---@param on_save? fun(text: string)
+local function open_frame(view, on_save)
+  ui.open_frame({
+    title = title(view.file_path, view.start_line, view.end_line),
+    context = vim.split(view.snippet, "\n"),
+    filetype = vim.bo[view.bufnr].filetype,
+    comment = view.comment,
+    on_save = on_save,
+  })
+end
+
+---@param view ScratchCommentView
+local function edit(view)
+  open_frame(view, function(text)
+    state.update(view.id, { comment = text })
+    ui.notify("Updated comment", "info")
+  end)
 end
 
 ---@param start_line integer
@@ -55,27 +70,39 @@ function M.range(start_line, end_line)
   start_line, end_line = math.min(start_line, end_line), math.max(start_line, end_line)
 
   local existing = find_anchor(bufnr, start_line, end_line)
-  prompt(existing, function(text)
-    if existing then
-      update_text(existing, text)
-      return
-    end
+  if existing then
+    edit(existing)
+    return
+  end
 
-    -- vim.ui.input may be asynchronous; the buffer can be gone by now.
-    if not vim.api.nvim_buf_is_valid(bufnr) then
-      return
-    end
-    local file_path = vim.fn.fnamemodify(name, ":p")
-    local comment = state.add({
-      bufnr = bufnr,
-      comment = text,
-      file_path = file_path,
-      relative_path = context.relative_path(context.git_root(file_path), file_path),
-    })
-    render.anchor(comment, start_line, end_line)
-    render.draw_signs(bufnr, state.in_buffer(bufnr))
-    ui.notify("Added comment", "info")
-  end)
+  local file_path = vim.fn.fnamemodify(name, ":p")
+  local relative_path = context.relative_path(context.git_root(file_path), file_path)
+  ---@type ScratchComment?
+  local added
+  ui.open_frame({
+    title = title(file_path, start_line, end_line),
+    context = vim.api.nvim_buf_get_lines(bufnr, start_line - 1, end_line, false),
+    filetype = vim.bo[bufnr].filetype,
+    comment = "",
+    on_save = function(text)
+      if added then
+        state.update(added.id, { comment = text })
+        return
+      end
+      if not vim.api.nvim_buf_is_valid(bufnr) then
+        return
+      end
+      added = state.add({
+        bufnr = bufnr,
+        comment = text,
+        file_path = file_path,
+        relative_path = relative_path,
+      })
+      render.anchor(added, start_line, end_line)
+      render.draw_signs(bufnr, state.in_buffer(bufnr))
+      ui.notify("Added comment", "info")
+    end,
+  })
 end
 
 ---@param view ScratchCommentView
@@ -83,7 +110,7 @@ end
 local function describe(view)
   local lines = view.start_line == view.end_line and tostring(view.start_line)
     or (view.start_line .. "-" .. view.end_line)
-  return "lines " .. lines .. ": " .. view.comment
+  return "lines " .. lines .. ": " .. ui.summary(view.comment)
 end
 
 ---@param views ScratchCommentView[]
@@ -113,7 +140,9 @@ function M.show_current()
     ui.notify("No comment at cursor", "info")
     return
   end
-  ui.show(views)
+  choose(views, function(view)
+    open_frame(view)
+  end)
 end
 
 function M.edit_current()
@@ -122,11 +151,7 @@ function M.edit_current()
     ui.notify("No comment at cursor", "info")
     return
   end
-  choose(views, function(view)
-    prompt(view, function(text)
-      update_text(view, text)
-    end)
-  end)
+  choose(views, edit)
 end
 
 function M.delete_current()
@@ -146,7 +171,7 @@ function M.delete_current()
   vim.ui.select(orphans, {
     prompt = "Delete orphaned comment: ",
     format_item = function(comment)
-      return comment.comment
+      return ui.summary(comment.comment)
     end,
   }, function(comment)
     if comment then

@@ -23,10 +23,9 @@ local function assert_contains(haystack, needle, message)
   end
 end
 
-local inputs = {}
----@diagnostic disable-next-line: duplicate-set-field -- test fake
-vim.ui.input = function(_, callback)
-  callback(table.remove(inputs, 1))
+local function write(comment)
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(comment, "\n"))
+  vim.cmd("wq")
 end
 
 local offered = {}
@@ -52,8 +51,8 @@ vim.cmd.file("orphans-fixture.md")
 vim.api.nvim_buf_set_lines(0, 0, -1, false, { "one", "two", "the quick fox", "four", "five" })
 
 vim.api.nvim_win_set_cursor(0, { 3, 0 })
-inputs = { "a comment on the fox" }
 vim.cmd("Comment")
+write("a comment on the fox")
 
 vim.cmd("normal! ciwslow")
 assert_equal(#state.anchored(), 1, "editing part of a line must keep its comment anchored")
@@ -97,8 +96,8 @@ assert_equal(#state.orphans(), 0, ":CommentDelete must delete the chosen orphan"
 
 state.clear()
 vim.api.nvim_buf_set_lines(0, 0, -1, false, { "a", "b", "c", "d", "e" })
-inputs = { "a comment on b through d" }
 vim.cmd("2,4Comment")
+write("a comment on b through d")
 vim.api.nvim_win_set_cursor(0, { 3, 0 })
 vim.cmd("normal! ccrewritten")
 assert_equal(#state.orphans(), 0, "rewriting one line of a range must not orphan the comment")

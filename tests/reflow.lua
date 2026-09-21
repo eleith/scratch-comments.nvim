@@ -18,10 +18,9 @@ local function assert_equal(actual, expected, message)
 end
 
 local text = "the quick brown fox"
-local inputs = {}
----@diagnostic disable-next-line: duplicate-set-field -- test fake
-vim.ui.input = function(_, callback)
-  callback(table.remove(inputs, 1))
+local function write(comment)
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(comment, "\n"))
+  vim.cmd("wq")
 end
 
 vim.cmd.enew()
@@ -29,8 +28,8 @@ vim.cmd.file("reflow-fixture.md")
 vim.api.nvim_buf_set_lines(0, 0, -1, false, { "one", "two", text, "four", "five" })
 
 vim.api.nvim_win_set_cursor(0, { 3, 0 })
-inputs = { "a comment on the fox" }
 vim.cmd("Comment")
+write("a comment on the fox")
 
 local function only()
   return state.anchored()[1]
@@ -60,8 +59,8 @@ assert_equal(only().start_line, 3, "start_line must follow the text when lines a
 
 vim.api.nvim_buf_set_lines(0, 0, -1, false, { "a", "b", "c", "d", "e" })
 state.clear()
-inputs = { "a comment on b through d" }
 vim.cmd("2,4Comment")
+write("a comment on b through d")
 assert_equal(only().start_line, 2, "range start")
 assert_equal(only().end_line, 4, "range end")
 
