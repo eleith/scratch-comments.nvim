@@ -72,7 +72,11 @@ vim.cmd("Comment")
 assert_equal(count(), 1, ":Comment should create a comment")
 assert_contains(scratch.render(), "## README.md")
 assert_contains(scratch.render(), "first comment")
-assert_equal(extmark_at(1).sign_text, "C>", "sign text should be rendered")
+assert_equal(
+  extmark_at(1).hl_group,
+  "ScratchCommentRange",
+  "the commented lines should be highlighted"
+)
 
 inputs = { "edited comment" }
 vim.cmd("Comment")
@@ -84,6 +88,25 @@ inputs = { "range comment" }
 vim.cmd("1,3Comment")
 assert_equal(count(), 2, "a different anchor should add a second comment")
 assert_contains(scratch.render(), "lines 1-3")
+
+local function float_text()
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    if vim.api.nvim_win_get_config(win).relative ~= "" then
+      return table.concat(
+        vim.api.nvim_buf_get_lines(vim.api.nvim_win_get_buf(win), 0, -1, false),
+        "\n"
+      )
+    end
+  end
+end
+
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+vim.cmd("CommentShow")
+local shown = float_text() or fail(":CommentShow should open a float")
+assert_contains(shown, "edited comment", ":CommentShow should show every comment at the cursor")
+assert_contains(shown, "range comment", ":CommentShow should show every comment at the cursor")
+assert_contains(shown, "─", ":CommentShow should separate comments with a rule")
+vim.cmd("fclose!")
 
 vim.api.nvim_win_set_cursor(0, { 1, 0 })
 selections = { 2 }

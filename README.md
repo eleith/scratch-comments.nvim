@@ -35,6 +35,12 @@ comment on a range:
 :12,16Comment
 ```
 
+commented lines are highlighted. read the comments on the cursor line:
+
+```vim
+:CommentShow
+```
+
 browse every comment, then copy them all:
 
 ```vim
@@ -47,8 +53,9 @@ browse every comment, then copy them all:
 | Command | Does |
 | --- | --- |
 | `:Comment` | Comment on the current line or command range |
+| `:CommentShow` | Show the comments at the cursor in a float |
 | `:CommentEdit` | Edit the comment at the cursor |
-| `:CommentDelete` | Delete the comment at the cursor |
+| `:CommentDelete` | Delete the comment at the cursor, or pick an orphaned one |
 | `:CommentList` | Put comments in the quickfix list and open it |
 | `:CommentExport` | Copy all comments to the clipboard |
 | `:CommentClear` | Delete every comment |
@@ -60,6 +67,7 @@ browse every comment, then copy them all:
 ```lua
 vim.keymap.set("n", "<leader>ca", "<Cmd>Comment<CR>", { desc = "Comment on line" })
 vim.keymap.set("x", "<leader>ca", ":Comment<CR>", { desc = "Comment on selection" })
+vim.keymap.set("n", "<leader>cs", "<Cmd>CommentShow<CR>", { desc = "Show comments" })
 vim.keymap.set("n", "<leader>cl", "<Cmd>CommentList<CR>", { desc = "List comments" })
 vim.keymap.set("n", "<leader>cx", "<Cmd>CommentExport<CR>", { desc = "Copy comments" })
 ```
@@ -79,31 +87,29 @@ vim.keymap.set("n", "<leader>cx", "<Cmd>CommentExport<CR>", { desc = "Copy comme
 
 Comments are lost when you close the buffer (`:bw`) or run `:CommentClear`.
 
+deleting every line a comment covers orphans it. an orphan is hidden but kept:
+`:CommentList` shows it last, `:CommentExport` puts it in an "Orphaned" section,
+and undo brings it back. `:CommentDelete` on a line with no comment offers the
+buffer's orphans to delete.
+
 ## configuration
 
-Everything is optional.
+there are no options. commented lines use the `ScratchCommentRange` highlight,
+linked to `Visual`. restyle it:
 
 ```lua
-require("scratch_comments").setup({
-  display = {
-    sign_text = "C>",
-    sign_hl_group = "ScratchCommentSign",
-    virtual_text_prefix = " ",
-    virtual_text_hl_group = "ScratchCommentVirtual",
-    virtual_text_pos = "eol",
-    max_comment_length = 80,
-    priority = 120,
-  },
-})
+vim.api.nvim_set_hl(0, "ScratchCommentRange", { bg = "#3b3520" })
+```
 
 ## lua API
 
 ```lua
 local scratch = require("scratch_comments")
 
-scratch.setup(opts)
+scratch.setup()
 scratch.add()         -- current line
 scratch.add_visual()
+scratch.show()
 scratch.edit()
 scratch.delete()
 scratch.list()

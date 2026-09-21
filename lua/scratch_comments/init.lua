@@ -5,18 +5,6 @@ local render = require("scratch_comments.render")
 local state = require("scratch_comments.state")
 local ui = require("scratch_comments.ui")
 
----@class ScratchDisplayConfig
----@field sign_text? string
----@field sign_hl_group? string
----@field virtual_text_prefix? string
----@field virtual_text_hl_group? string
----@field virtual_text_pos? string
----@field max_comment_length? integer
----@field priority? integer
-
----@class ScratchConfig
----@field display? ScratchDisplayConfig
-
 local M = {}
 
 ---@param ctx? vim.api.keyset.create_user_command.command_args
@@ -26,6 +14,10 @@ end
 
 function M.add_visual()
   annotate.visual_selection()
+end
+
+function M.show()
+  annotate.show_current()
 end
 
 function M.edit()
@@ -72,15 +64,18 @@ function M.clear()
   ui.notify("Cleared comments", "info")
 end
 
----@param opts? ScratchConfig
-function M.setup(opts)
-  opts = opts or {}
-  render.setup(opts.display)
+function M.setup()
+  render.setup()
 
   vim.api.nvim_create_user_command("Comment", function(ctx)
     M.add(ctx)
   end, { range = true, desc = "Comment on the current line or range" })
 
+  vim.api.nvim_create_user_command(
+    "CommentShow",
+    M.show,
+    { desc = "Show the comments at the cursor" }
+  )
   vim.api.nvim_create_user_command(
     "CommentEdit",
     M.edit,

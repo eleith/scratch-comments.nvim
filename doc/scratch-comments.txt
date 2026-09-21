@@ -7,29 +7,34 @@ CONTENTS                                          *scratch-comments-contents*
   2. Commands ............. |scratch-comments-commands|
   3. Anchors .............. |scratch-comments-anchors|
   4. Retention ............ |scratch-comments-retention|
-  5. Configuration ........ |scratch-comments-configuration|
+  5. Highlight ............ |scratch-comments-highlight|
   6. Lua API .............. |scratch-comments-api|
 
 ==============================================================================
 1. INTRODUCTION                               *scratch-comments-introduction*
 
 Leave comments on lines in any file you are reading, then copy them all out as
-Markdown to paste into an LLM or hand to a person.
+Markdown to paste into an LLM or hand to a person. Commented lines are
+highlighted; |:CommentShow| reads the comments on the cursor line.
 
 Comments are scratch. They live in the buffer, are never written to disk, and
 go away when you close the buffer or clear them.
 
-Setup is optional if you accept the defaults: >lua
+Setup takes no options: >lua
     require("scratch_comments").setup()
 <
 This plugin sets no mappings. See |scratch-comments-api| to make your own.
 
-=======================================================================================================================================================
+==============================================================================
 2. COMMANDS                                       *scratch-comments-commands*
 
                                                                     *:Comment*
 :[range]Comment         Comment on the current line, or on [range]. If a
                         comment already exists on that exact anchor, edit it.
+
+                                                                *:CommentShow*
+:CommentShow            Show every comment on the cursor line in a float. It
+                        closes when the cursor moves.
 
                                                                 *:CommentEdit*
 :CommentEdit            Edit the comment at the cursor. Prompts when more than
@@ -37,12 +42,14 @@ This plugin sets no mappings. See |scratch-comments-api| to make your own.
 
                                                               *:CommentDelete*
 :CommentDelete          Delete the comment at the cursor. Prompts when more
-                        than one anchor covers the cursor line.
+                        than one anchor covers the cursor line. On a line with
+                        no comment, offers the buffer's orphaned comments.
 
                                                                 *:CommentList*
 :CommentList            Put every comment in the |quickfix| list and open it.
                         Any quickfix front-end (trouble.nvim, nvim-bqf,
-                        Snacks.picker.qflist, :Telescope quickfix) displays it.
+                        Snacks.picker.qflist, :Telescope quickfix) can show
+                        it.
 
                                                               *:CommentExport*
 :CommentExport          Copy all comments to the system clipboard as Markdown.
@@ -63,32 +70,26 @@ A comment is anchored to a file and a line range.
 ==============================================================================
 4. RETENTION                                     *scratch-comments-retention*
 
-Comments are lost when the buffer is wiped (|:bwipeout|) or |:CommentClear| runs.
-Nothing else removes them. |:CommentExport| copies but never clears, so you may
-export as many times as you like.
+Comments are lost when the buffer is wiped (|:bwipeout|) or |:CommentClear|
+runs. Nothing else removes them. |:CommentExport| copies but never clears, so
+you may export as many times as you like.
+
+Deleting every line a comment covers orphans it. An orphan is hidden but kept:
+|:CommentList| shows it last, |:CommentExport| lists it in an "Orphaned"
+section, and |undo| restores it. Delete one with |:CommentDelete| from a line
+with no comment.
 
 There is no persistence and no state file. To keep comments, paste an export
 into a file you own.
 
 ==============================================================================
-5. CONFIGURATION                             *scratch-comments-configuration*
+5. HIGHLIGHT                                     *scratch-comments-highlight*
 
-All options are optional. >lua
-    require("scratch_comments").setup({
-      display = {
-        sign_text = "C>",
-        sign_hl_group = "ScratchCommentSign",
-        virtual_text_prefix = " ",
-        virtual_text_hl_group = "ScratchCommentVirtual",
-        virtual_text_pos = "eol",
-        max_comment_length = 80,
-        priority = 120,
-      },
-    })
+                                                        *ScratchCommentRange*
+Commented lines use ScratchCommentRange, linked to |hl-Visual| by default.
+Restyle it: >lua
+    vim.api.nvim_set_hl(0, "ScratchCommentRange", { bg = "#3b3520" })
 <
-                                                       *ScratchCommentSign*
-                                                    *ScratchCommentVirtual*
-Highlight groups link to |hl-DiagnosticInfo| and |hl-Comment| by default.
 
 ==============================================================================
 6. LUA API                                             *scratch-comments-api*
@@ -96,9 +97,10 @@ Highlight groups link to |hl-DiagnosticInfo| and |hl-Comment| by default.
 >lua
     local scratch = require("scratch_comments")
 
-    scratch.setup(opts)
+    scratch.setup()
     scratch.add()         -- current line or command range
     scratch.add_visual()  -- visual selection
+    scratch.show()
     scratch.edit()
     scratch.delete()
     scratch.list()
@@ -107,8 +109,9 @@ Highlight groups link to |hl-DiagnosticInfo| and |hl-Comment| by default.
     scratch.clear()
 <
 Example mappings: >lua
-    vim.keymap.set("n", "<leader>aa", "<Cmd>Comment<CR>")
-    vim.keymap.set("x", "<leader>aa", ":Comment<CR>")
-    vim.keymap.set("n", "<leader>ax", "<Cmd>CommentExport<CR>")
+    vim.keymap.set("n", "<leader>ca", "<Cmd>Comment<CR>")
+    vim.keymap.set("x", "<leader>ca", ":Comment<CR>")
+    vim.keymap.set("n", "<leader>cs", "<Cmd>CommentShow<CR>")
+    vim.keymap.set("n", "<leader>cx", "<Cmd>CommentExport<CR>")
 <
 vim:tw=78:ts=8:noet:ft=help:norl:

@@ -25,6 +25,18 @@ function M.input(prompt, default, callback)
   end)
 end
 
+---@param views ScratchCommentView[]
+function M.show(views)
+  local lines = {}
+  for i, view in ipairs(views) do
+    if i > 1 then
+      vim.list_extend(lines, { "", "---", "" })
+    end
+    vim.list_extend(lines, vim.split(view.comment, "\n"))
+  end
+  vim.lsp.util.open_floating_preview(lines, "markdown")
+end
+
 -- Quickfix rather than a picker: any quickfix front-end (Trouble, Snacks,
 -- Telescope, nvim-bqf) can display it.
 ---@param items ScratchCommentView[]

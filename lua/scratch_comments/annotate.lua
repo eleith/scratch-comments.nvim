@@ -54,11 +54,8 @@ end
 ---@param view ScratchCommentView
 ---@param text string
 local function update_text(view, text)
-  local comment = state.update(view.id, { comment = text })
-  if comment then
-    render.place(comment, view.start_line, view.end_line)
-    ui.notify("Updated comment", "info")
-  end
+  state.update(view.id, { comment = text })
+  ui.notify("Updated comment", "info")
 end
 
 ---@param start_line integer
@@ -130,6 +127,15 @@ end
 local function delete(comment)
   render.clear_all(state.remove_ids({ comment.id }))
   ui.notify("Deleted comment", "info")
+end
+
+function M.show_current()
+  local views = cursor_comments()
+  if #views == 0 then
+    ui.notify("No comment at cursor", "info")
+    return
+  end
+  ui.show(views)
 end
 
 function M.edit_current()

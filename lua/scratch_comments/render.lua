@@ -2,30 +2,8 @@ local M = {}
 
 local namespace = vim.api.nvim_create_namespace("scratch_comments")
 
-local config = {
-  sign_text = "C>",
-  sign_hl_group = "ScratchCommentSign",
-  virtual_text_prefix = " ",
-  virtual_text_hl_group = "ScratchCommentVirtual",
-  virtual_text_pos = "eol",
-  max_comment_length = 80,
-  priority = 120,
-}
-
-local function short_comment(text)
-  local value = (text or ""):gsub("%s+", " ")
-  local max_length = config.max_comment_length or 80
-  if max_length > 3 and #value > max_length then
-    return value:sub(1, max_length - 3) .. "..."
-  end
-  return value
-end
-
----@param opts? ScratchDisplayConfig
-function M.setup(opts)
-  config = vim.tbl_deep_extend("force", config, opts or {})
-  vim.api.nvim_set_hl(0, "ScratchCommentSign", { link = "DiagnosticInfo", default = true })
-  vim.api.nvim_set_hl(0, "ScratchCommentVirtual", { link = "Comment", default = true })
+function M.setup()
+  vim.api.nvim_set_hl(0, "ScratchCommentRange", { link = "Visual", default = true })
 end
 
 ---@param comment ScratchComment
@@ -33,23 +11,14 @@ end
 ---@param end_line integer
 function M.place(comment, start_line, end_line)
   comment.extmark_id = vim.api.nvim_buf_set_extmark(comment.bufnr, namespace, start_line - 1, 0, {
-    id = comment.extmark_id,
     -- Ending at the start of the next line includes the line breaks, so
     -- rewriting a line's text keeps the mark and only deleting the lines
     -- invalidates it.
     end_row = end_line,
     end_col = 0,
     invalidate = true,
-    sign_text = config.sign_text,
-    sign_hl_group = config.sign_hl_group,
-    virt_text = {
-      {
-        (config.virtual_text_prefix or "") .. short_comment(comment.comment),
-        config.virtual_text_hl_group,
-      },
-    },
-    virt_text_pos = config.virtual_text_pos,
-    priority = config.priority,
+    hl_group = "ScratchCommentRange",
+    hl_eol = true,
   })
 end
 
