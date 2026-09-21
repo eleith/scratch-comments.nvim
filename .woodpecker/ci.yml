@@ -1,46 +1,26 @@
-# Each Woodpecker step is its own container, so system packages do not carry
-# between steps. Every step installs only what it needs.
-
+# Conditions are OR'd: push to main, any pull request, any tag.
 when:
-  - event: [push, pull_request]
+  - event: push
+    branch: main
+  - event: [pull_request, tag]
+
+variables:
+  # Neovim, lua-language-server and stylua, pinned. Built from
+  # git.eleith.com/eleith/containers (nvim).
+  - &image git.eleith.com/eleith.private/nvim:0.12.1-luals3.19.1-stylua2.5.2
 
 steps:
   - name: lint
-    image: debian:bookworm-slim
+    image: *image
     commands:
-      - apt-get update -qq
-      - apt-get install -y -qq make lua5.1 liblua5.1-0-dev luarocks build-essential
-      - luarocks install luacheck
       - make lint
 
   - name: fmt
-    image: debian:bookworm-slim
+    image: *image
     commands:
-      - apt-get update -qq
-      - apt-get install -y -qq make curl unzip ca-certificates
-      - curl -fsSL -o /tmp/stylua.zip https://github.com/JohnnyMorganz/StyLua/releases/latest/download/stylua-linux-x86_64.zip
-      - unzip -qo /tmp/stylua.zip -d /usr/local/bin
-      - chmod +x /usr/local/bin/stylua
       - make fmt-check
 
-  - name: types
-    image: debian:bookworm-slim
-    environment:
-      LUALS_VERSION: "3.19.1"
-    commands:
-      - apt-get update -qq
-      - apt-get install -y -qq make curl ca-certificates
-      - curl -fsSL https://github.com/neovim/neovim/releases/download/stable/nvim-linux-x86_64.tar.gz | tar xz -C /opt
-      - mkdir -p /opt/luals
-      - curl -fsSL "https://github.com/LuaLS/lua-language-server/releases/download/$${LUALS_VERSION}/lua-language-server-$${LUALS_VERSION}-linux-x64.tar.gz" | tar xz -C /opt/luals
-      - export PATH="/opt/nvim-linux-x86_64/bin:/opt/luals/bin:$$PATH"
-      - make types
-
   - name: test
-    image: debian:bookworm-slim
+    image: *image
     commands:
-      - apt-get update -qq
-      - apt-get install -y -qq make curl ca-certificates
-      - curl -fsSL https://github.com/neovim/neovim/releases/download/stable/nvim-linux-x86_64.tar.gz | tar xz -C /opt
-      - export PATH="/opt/nvim-linux-x86_64/bin:$$PATH"
       - make test
