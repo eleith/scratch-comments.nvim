@@ -106,6 +106,14 @@ function M.all()
   return items
 end
 
+---@param bufnr integer
+---@return ScratchComment[]
+function M.in_buffer(bufnr)
+  return vim.tbl_filter(function(comment)
+    return comment.bufnr == bufnr
+  end, items)
+end
+
 function M.clear()
   items = {}
 end

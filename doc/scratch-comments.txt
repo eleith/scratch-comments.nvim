@@ -7,15 +7,15 @@ CONTENTS                                          *scratch-comments-contents*
   2. Commands ............. |scratch-comments-commands|
   3. Anchors .............. |scratch-comments-anchors|
   4. Retention ............ |scratch-comments-retention|
-  5. Highlight ............ |scratch-comments-highlight|
+  5. Signs ................ |scratch-comments-signs|
   6. Lua API .............. |scratch-comments-api|
 
 ==============================================================================
 1. INTRODUCTION                               *scratch-comments-introduction*
 
 Comment on any lines in any file, then copy the comments out as Markdown or
-JSON to paste into an LLM or give to a person. Commented lines are
-highlighted, and |:CommentShow| shows the comments on the cursor line.
+JSON to paste into an LLM or give to a person. Commented lines get a sign,
+and |:CommentShow| shows the comments on the cursor line.
 
 Comments live in the buffer. They go away when you close the buffer or clear
 them.
@@ -29,8 +29,10 @@ Add your own mappings. See |scratch-comments-api| for examples.
 2. COMMANDS                                       *scratch-comments-commands*
 
                                                                     *:Comment*
-:[range]Comment         Comment on the current line, or on [range]. If those
-                        exact lines already have a comment, edit it.
+:[range]Comment         Comment on the current line, or on [range]. To comment
+                        on a selection, select lines and type ":Comment",
+                        which gives ":'<,'>Comment". If those exact lines
+                        already have a comment, edit it.
 
                                                                 *:CommentShow*
 :CommentShow            Show every comment on the cursor line in a float. It
@@ -59,6 +61,11 @@ Add your own mappings. See |scratch-comments-api| for examples.
                         With [!], open them in a scratch buffer instead. From
                         there you can save them with |:w|, pipe them to a
                         command with |:w_c|, or filter them with |:range!|.
+
+                                                              *:CommentToggle*
+:CommentToggle [on|off] Show or hide the comment signs, or toggle them with no
+                        argument. The comments stay and keep following your
+                        edits.
 
                                                                *:CommentClear*
 :CommentClear           Delete every comment.
@@ -89,12 +96,16 @@ In tmux you may need to set the clipboard to OSC 52 yourself: >lua
 <See |clipboard-osc52|.
 
 ==============================================================================
-5. HIGHLIGHT                                     *scratch-comments-highlight*
+5. SIGNS                                             *scratch-comments-signs*
 
-                                                        *ScratchCommentRange*
-Commented lines use ScratchCommentRange, which links to |hl-Visual|. To
+Each commented line gets a sign: "│" for a one-line comment, and "╭", "│", "╰"
+down a range. The signs share the column with plugins like gitsigns and can
+cover their signs; |:CommentToggle| hides ours when you need to see theirs.
+
+                                                         *ScratchCommentSign*
+The signs use ScratchCommentSign, which links to |hl-DiagnosticInfo|. To
 change it: >lua
-    vim.api.nvim_set_hl(0, "ScratchCommentRange", { bg = "#3b3520" })
+    vim.api.nvim_set_hl(0, "ScratchCommentSign", { fg = "#d7a65f" })
 <
 
 ==============================================================================
@@ -104,14 +115,14 @@ change it: >lua
     local scratch = require("scratch_comments")
 
     scratch.setup()
-    scratch.add()         -- current line or command range
-    scratch.add_visual()  -- visual selection
+    scratch.add(start_line, end_line)  -- default: the cursor line
     scratch.show()
     scratch.edit()
     scratch.delete()
     scratch.list()
     scratch.render(format)             -- "markdown" (default) or "json"
     scratch.export(format, in_buffer)  -- copy, or open in a scratch buffer
+    scratch.toggle(on)                 -- true, false, or nil to toggle
     scratch.clear()
 <
 Example mappings: >lua

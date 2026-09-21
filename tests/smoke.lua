@@ -33,15 +33,16 @@ local function count()
   return #state.all()
 end
 
-local function extmark_at(line)
-  local namespace = vim.api.nvim_get_namespaces().scratch_comments
-  local marks = vim.api.nvim_buf_get_extmarks(0, namespace, 0, -1, { details = true })
-  for _, mark in ipairs(marks) do
-    if mark[2] == line - 1 then
-      return mark[4]
-    end
-  end
-  fail("no extmark found at line " .. line)
+local function sign_at(line)
+  local namespace = vim.api.nvim_get_namespaces().scratch_comments_signs
+  local marks = vim.api.nvim_buf_get_extmarks(
+    0,
+    namespace,
+    { line - 1, 0 },
+    { line - 1, -1 },
+    { details = true, overlap = true }
+  )
+  return marks[1] and vim.trim(marks[1][4].sign_text)
 end
 
 local inputs = {}
@@ -72,11 +73,7 @@ vim.cmd("Comment")
 assert_equal(count(), 1, ":Comment should create a comment")
 assert_contains(scratch.render(), "## README.md")
 assert_contains(scratch.render(), "first comment")
-assert_equal(
-  extmark_at(1).hl_group,
-  "ScratchCommentRange",
-  "the commented lines should be highlighted"
-)
+assert_equal(sign_at(1), "│", "a one-line comment gets a single sign")
 
 inputs = { "edited comment" }
 vim.cmd("Comment")
@@ -140,6 +137,43 @@ assert_equal(qf.title, "Comments", ":CommentList should title the quickfix list"
 assert_equal(#qf.items, 1, ":CommentList should populate quickfix")
 assert_equal(qf.items[1].text, "quickfix check", "quickfix entry should carry the comment text")
 vim.cmd("cclose")
+vim.cmd("CommentClear")
+
+inputs = { "toggle check" }
+vim.cmd("Comment")
+vim.cmd("CommentToggle off")
+assert_equal(sign_at(1), nil, ":CommentToggle off must hide signs")
+vim.cmd("CommentToggle on")
+assert_equal(sign_at(1), "│", ":CommentToggle on must show signs")
+vim.cmd("CommentToggle")
+assert_equal(sign_at(1), nil, ":CommentToggle must hide shown signs")
+inputs = { "added while hidden" }
+vim.cmd("2Comment")
+assert_equal(sign_at(2), nil, "comments added while hidden have no sign")
+vim.cmd("CommentToggle")
+assert_equal(sign_at(2), "│", ":CommentToggle must show hidden signs")
+vim.cmd("CommentClear")
+assert_equal(sign_at(1), nil, ":CommentClear must remove signs")
+
+inputs = { "on four lines" }
+vim.cmd("2,5Comment")
+assert_equal(sign_at(1), nil, "no sign above a range")
+assert_equal(sign_at(2), "╭", "a range starts with its first sign")
+assert_equal(sign_at(3), "│", "a range's middle lines get the middle sign")
+assert_equal(sign_at(4), "│", "a range's middle lines get the middle sign")
+assert_equal(sign_at(5), "╰", "a range ends with its last sign")
+assert_equal(sign_at(6), nil, "no sign below a range")
+vim.cmd("CommentClear")
+
+vim.api.nvim_win_set_cursor(0, { 2, 0 })
+inputs = { "on the cursor line" }
+scratch.add()
+inputs = { "on lines 4-5" }
+scratch.add(4, 5)
+local ranges = vim.tbl_map(function(comment)
+  return comment.start_line .. "-" .. comment.end_line
+end, state.anchored())
+assert_equal(table.concat(ranges, ","), "2-2,4-5", "scratch.add() defaults to the cursor line")
 vim.cmd("CommentClear")
 
 vim.cmd.edit("LICENSE")

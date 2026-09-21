@@ -10,13 +10,11 @@ local M = {}
 
 local formats = { markdown = markdown.render, json = json.render }
 
----@param ctx? vim.api.keyset.create_user_command.command_args
-function M.add(ctx)
-  annotate.command(ctx)
-end
-
-function M.add_visual()
-  annotate.visual_selection()
+---@param start_line? integer
+---@param end_line? integer
+function M.add(start_line, end_line)
+  start_line = start_line or vim.api.nvim_win_get_cursor(0)[1]
+  annotate.range(start_line, end_line or start_line)
 end
 
 function M.show()
@@ -73,8 +71,35 @@ function M.export(format, in_buffer)
   ui.notify("Copied " .. count .. " comment(s)", "info")
 end
 
+---@return integer[]
+local function commented_buffers()
+  local buffers = {}
+  for _, comment in ipairs(state.all()) do
+    buffers[comment.bufnr] = true
+  end
+  return vim.tbl_keys(buffers)
+end
+
+---@param bufnr integer
+local function redraw(bufnr)
+  render.draw_signs(bufnr, state.in_buffer(bufnr))
+end
+
+---@param on? boolean
+function M.toggle(on)
+  if on == nil then
+    on = not render.is_visible()
+  end
+  render.set_visible(on)
+  for _, bufnr in ipairs(commented_buffers()) do
+    redraw(bufnr)
+  end
+end
+
 function M.clear()
-  render.clear_all(state.all())
+  for _, bufnr in ipairs(commented_buffers()) do
+    render.clear_buffer(bufnr)
+  end
   state.clear()
   ui.notify("Cleared comments", "info")
 end
@@ -83,7 +108,7 @@ function M.setup()
   render.setup()
 
   vim.api.nvim_create_user_command("Comment", function(ctx)
-    M.add(ctx)
+    M.add(ctx.line1, ctx.line2)
   end, { range = true, desc = "Comment on the current line or range" })
 
   vim.api.nvim_create_user_command(
@@ -112,9 +137,34 @@ function M.setup()
     end,
     desc = "Copy comments to the clipboard; with ! open them in a scratch buffer",
   })
+  vim.api.nvim_create_user_command("CommentToggle", function(ctx)
+    local choice = ctx.fargs[1]
+    if choice ~= nil and choice ~= "on" and choice ~= "off" then
+      ui.notify("Usage: :CommentToggle [on|off]", "error")
+      return
+    end
+    if choice == nil then
+      M.toggle()
+    else
+      M.toggle(choice == "on")
+    end
+  end, {
+    nargs = "?",
+    complete = function()
+      return { "on", "off" }
+    end,
+    desc = "Show or hide the comment signs",
+  })
   vim.api.nvim_create_user_command("CommentClear", M.clear, { desc = "Clear all comments" })
 
   local group = vim.api.nvim_create_augroup("scratch_comments", { clear = true })
+
+  vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
+    group = group,
+    callback = function(args)
+      redraw(args.buf)
+    end,
+  })
 
   vim.api.nvim_create_autocmd("BufDelete", {
     group = group,

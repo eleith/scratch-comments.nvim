@@ -69,4 +69,12 @@ vim.api.nvim_buf_set_lines(0, 2, 2, false, { "inserted inside the range" })
 assert_equal(only().start_line, 2, "range start holds when text is inserted inside")
 assert_equal(only().end_line, 5, "range end must grow when text is inserted inside it")
 
+vim.api.nvim_buf_set_lines(0, 4, 5, false, {})
+assert_equal(only().end_line, 4, "deleting a range's last line must shrink it")
+assert_equal(
+  only().snippet,
+  "b\ninserted inside the range\nc",
+  "the range must not take in the next line"
+)
+
 print("reflow: ok")

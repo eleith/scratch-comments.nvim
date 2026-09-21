@@ -5,21 +5,6 @@ local ui = require("scratch_comments.ui")
 
 local M = {}
 
----@param ctx? vim.api.keyset.create_user_command.command_args
----@return integer start_line, integer end_line
-local function range_from_ctx(ctx)
-  if ctx and ctx.range and ctx.range > 0 then
-    return ctx.line1, ctx.line2
-  end
-  local line = vim.api.nvim_win_get_cursor(0)[1]
-  return line, line
-end
-
----@return integer start_line, integer end_line
-local function visual_range()
-  return vim.fn.line("v"), vim.fn.line(".")
-end
-
 ---@param bufnr integer
 ---@param start_line integer
 ---@param end_line integer
@@ -87,18 +72,10 @@ function M.range(start_line, end_line)
       file_path = file_path,
       relative_path = context.relative_path(context.git_root(file_path), file_path),
     })
-    render.place(comment, start_line, end_line)
+    render.anchor(comment, start_line, end_line)
+    render.draw_signs(bufnr, state.in_buffer(bufnr))
     ui.notify("Added comment", "info")
   end)
-end
-
----@param ctx? vim.api.keyset.create_user_command.command_args
-function M.command(ctx)
-  M.range(range_from_ctx(ctx))
-end
-
-function M.visual_selection()
-  M.range(visual_range())
 end
 
 ---@param view ScratchCommentView
@@ -126,6 +103,7 @@ end
 ---@param comment ScratchComment
 local function delete(comment)
   render.clear_all(state.remove_ids({ comment.id }))
+  render.draw_signs(comment.bufnr, state.in_buffer(comment.bufnr))
   ui.notify("Deleted comment", "info")
 end
 
@@ -159,9 +137,7 @@ function M.delete_current()
   end
 
   local bufnr = vim.api.nvim_get_current_buf()
-  local orphans = vim.tbl_filter(function(comment)
-    return comment.bufnr == bufnr
-  end, state.orphans())
+  local orphans = vim.tbl_filter(render.is_orphaned, state.in_buffer(bufnr))
   if #orphans == 0 then
     ui.notify("No comment at cursor", "info")
     return

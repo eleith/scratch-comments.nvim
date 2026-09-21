@@ -29,13 +29,15 @@ comment on the current line:
 :Comment
 ```
 
-comment on a range:
+comment on a range, or select lines and type `:Comment`:
 
 ```vim
 :12,16Comment
+:'<,'>Comment
 ```
 
-commented lines are highlighted. read the comments on the cursor line:
+commented lines get a mark in the sign column: `│` for one line, and `╭` `│` `╰`
+down a range. read the comments on the cursor line:
 
 ```vim
 :CommentShow
@@ -67,6 +69,7 @@ it, pipe it to a command, or edit it:
 | `:CommentDelete` | Delete the comment at the cursor, or pick an orphaned one |
 | `:CommentList` | Put comments in the quickfix list and open it |
 | `:CommentExport[!] [format]` | Copy all comments to the clipboard as `markdown` (default) or `json`. `!` opens them in a scratch buffer |
+| `:CommentToggle [on\|off]` | Show or hide the comment signs |
 | `:CommentClear` | Delete every comment |
 
 ## mappings
@@ -98,6 +101,9 @@ works:
 comments go away when you close the buffer (`:bd`, `:bw`) or run
 `:CommentClear`. to keep them, export them to a file.
 
+the signs share the sign column with plugins like gitsigns, and can cover their
+signs. `:CommentToggle` hides ours when you need to see theirs.
+
 if you delete all the lines a comment is on, the comment becomes an orphan.
 orphans are listed last in `:CommentList` and in an "Orphaned" section of the
 export, and undo restores them. to delete one, run `:CommentDelete` on a line
@@ -105,11 +111,11 @@ with no comment.
 
 ## configuration
 
-commented lines use the `ScratchCommentRange` highlight, which links to `Visual`.
+the signs use the `ScratchCommentSign` highlight, which links to `DiagnosticInfo`.
 to change it:
 
 ```lua
-vim.api.nvim_set_hl(0, "ScratchCommentRange", { bg = "#3b3520" })
+vim.api.nvim_set_hl(0, "ScratchCommentSign", { fg = "#d7a65f" })
 ```
 
 ## lua API
@@ -118,14 +124,14 @@ vim.api.nvim_set_hl(0, "ScratchCommentRange", { bg = "#3b3520" })
 local scratch = require("scratch_comments")
 
 scratch.setup()
-scratch.add()         -- current line
-scratch.add_visual()
+scratch.add(start_line, end_line)  -- default: the cursor line
 scratch.show()
 scratch.edit()
 scratch.delete()
 scratch.list()
 scratch.render(format)             -- "markdown" (default) or "json"
 scratch.export(format, in_buffer)  -- copy, or open in a scratch buffer
+scratch.toggle(on)                 -- true, false, or nil to toggle
 scratch.clear()
 ```
 
