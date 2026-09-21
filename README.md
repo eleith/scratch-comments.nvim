@@ -23,7 +23,7 @@ require("scratch_comments").setup()
 
 ## use
 
-Comment on the current line:
+comment on the current line:
 
 ```vim
 :Comment
@@ -45,7 +45,16 @@ browse every comment, then copy them all:
 
 ```vim
 :CommentList
-:CommentExport
+:CommentExport         " markdown, to the clipboard
+:CommentExport json    " json, to the clipboard
+```
+
+add `!` to open the export in a scratch buffer instead. from there you can save
+it, pipe it to a command, or edit it:
+
+```vim
+:CommentExport!        " then :w review.md, :w !some-cmd, :%!jq ., ...
+:CommentExport! json
 ```
 
 ## commands
@@ -57,12 +66,12 @@ browse every comment, then copy them all:
 | `:CommentEdit` | Edit the comment at the cursor |
 | `:CommentDelete` | Delete the comment at the cursor, or pick an orphaned one |
 | `:CommentList` | Put comments in the quickfix list and open it |
-| `:CommentExport` | Copy all comments to the clipboard |
+| `:CommentExport[!] [format]` | Copy all comments to the clipboard as `markdown` (default) or `json`. `!` opens them in a scratch buffer |
 | `:CommentClear` | Delete every comment |
 
 ## mappings
 
-**This plugin sets no mappings.** Add your own:
+add your own, for example:
 
 ```lua
 vim.keymap.set("n", "<leader>ca", "<Cmd>Comment<CR>", { desc = "Comment on line" })
@@ -74,7 +83,8 @@ vim.keymap.set("n", "<leader>cx", "<Cmd>CommentExport<CR>", { desc = "Copy comme
 
 ## browsing
 
-`:CommentList` writes to Neovim's quickfix list and opens it.
+`:CommentList` puts your comments in the quickfix list, so any quickfix viewer
+works:
 
 ```vim
 :copen                       " built in, no plugins
@@ -85,17 +95,18 @@ vim.keymap.set("n", "<leader>cx", "<Cmd>CommentExport<CR>", { desc = "Copy comme
 
 ## retention
 
-Comments are lost when you close the buffer (`:bw`) or run `:CommentClear`.
+comments go away when you close the buffer (`:bd`, `:bw`) or run
+`:CommentClear`. to keep them, export them to a file.
 
-deleting every line a comment covers orphans it. an orphan is hidden but kept:
-`:CommentList` shows it last, `:CommentExport` puts it in an "Orphaned" section,
-and undo brings it back. `:CommentDelete` on a line with no comment offers the
-buffer's orphans to delete.
+if you delete all the lines a comment is on, the comment becomes an orphan.
+orphans are listed last in `:CommentList` and in an "Orphaned" section of the
+export, and undo restores them. to delete one, run `:CommentDelete` on a line
+with no comment.
 
 ## configuration
 
-there are no options. commented lines use the `ScratchCommentRange` highlight,
-linked to `Visual`. restyle it:
+commented lines use the `ScratchCommentRange` highlight, which links to `Visual`.
+to change it:
 
 ```lua
 vim.api.nvim_set_hl(0, "ScratchCommentRange", { bg = "#3b3520" })
@@ -113,12 +124,12 @@ scratch.show()
 scratch.edit()
 scratch.delete()
 scratch.list()
-scratch.render()      -- Markdown string for all comments
-scratch.export()      -- render + copy to clipboard
+scratch.render(format)             -- "markdown" (default) or "json"
+scratch.export(format, in_buffer)  -- copy, or open in a scratch buffer
 scratch.clear()
 ```
 
-`scratch.render()` returns a string, so you can send comments anywhere:
+`scratch.render()` returns the export as a string. to write it to a file:
 
 ```lua
 vim.fn.writefile(vim.split(scratch.render(), "\n"), "review.md")
@@ -128,12 +139,12 @@ vim.fn.writefile(vim.split(scratch.render(), "\n"), "review.md")
 
 - Neovim 0.10 or newer.
 - No plugin dependencies.
-- A clipboard provider
+- A clipboard provider. in tmux you may need `vim.g.clipboard = "osc52"`.
 
 ## credit
 
-A fork of [annotator.nvim](https://github.com/chpeters/annotator.nvim) by
-chpeters, reduced to a single primitive.
+forked from [annotator.nvim](https://github.com/chpeters/annotator.nvim) by
+chpeters.
 
 ## license
 

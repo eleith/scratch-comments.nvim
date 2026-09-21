@@ -13,37 +13,38 @@ CONTENTS                                          *scratch-comments-contents*
 ==============================================================================
 1. INTRODUCTION                               *scratch-comments-introduction*
 
-Leave comments on lines in any file you are reading, then copy them all out as
-Markdown to paste into an LLM or hand to a person. Commented lines are
-highlighted; |:CommentShow| reads the comments on the cursor line.
+Comment on any lines in any file, then copy the comments out as Markdown or
+JSON to paste into an LLM or give to a person. Commented lines are
+highlighted, and |:CommentShow| shows the comments on the cursor line.
 
-Comments are scratch. They live in the buffer, are never written to disk, and
-go away when you close the buffer or clear them.
+Comments live in the buffer. They go away when you close the buffer or clear
+them.
 
-Setup takes no options: >lua
+Setup: >lua
     require("scratch_comments").setup()
 <
-This plugin sets no mappings. See |scratch-comments-api| to make your own.
+Add your own mappings. See |scratch-comments-api| for examples.
 
 ==============================================================================
 2. COMMANDS                                       *scratch-comments-commands*
 
                                                                     *:Comment*
-:[range]Comment         Comment on the current line, or on [range]. If a
-                        comment already exists on that exact anchor, edit it.
+:[range]Comment         Comment on the current line, or on [range]. If those
+                        exact lines already have a comment, edit it.
 
                                                                 *:CommentShow*
 :CommentShow            Show every comment on the cursor line in a float. It
                         closes when the cursor moves.
 
                                                                 *:CommentEdit*
-:CommentEdit            Edit the comment at the cursor. Prompts when more than
-                        one anchor covers the cursor line.
+:CommentEdit            Edit the comment at the cursor. If more than one
+                        comment covers the line, asks which one.
 
                                                               *:CommentDelete*
-:CommentDelete          Delete the comment at the cursor. Prompts when more
-                        than one anchor covers the cursor line. On a line with
-                        no comment, offers the buffer's orphaned comments.
+:CommentDelete          Delete the comment at the cursor. If more than one
+                        comment covers the line, asks which one. On a line
+                        with no comment, lists the buffer's orphaned comments
+                        to choose from.
 
                                                                 *:CommentList*
 :CommentList            Put every comment in the |quickfix| list and open it.
@@ -52,8 +53,12 @@ This plugin sets no mappings. See |scratch-comments-api| to make your own.
                         it.
 
                                                               *:CommentExport*
-:CommentExport          Copy all comments to the system clipboard as Markdown.
-                        Never clears; see |:CommentClear|.
+:CommentExport[!] [format]
+                        Copy all comments to the system clipboard as
+                        "markdown" (the default) or "json".
+                        With [!], open them in a scratch buffer instead. From
+                        there you can save them with |:w|, pipe them to a
+                        command with |:w_c|, or filter them with |:range!|.
 
                                                                *:CommentClear*
 :CommentClear           Delete every comment.
@@ -61,33 +66,34 @@ This plugin sets no mappings. See |scratch-comments-api| to make your own.
 ==============================================================================
 3. ANCHORS                                         *scratch-comments-anchors*
 
-A comment is anchored to a file and a line range.
+A comment belongs to a file and a range of lines.
 
-- Commenting on an anchor that already has a comment edits that comment.
-- Commenting on a different anchor adds a new comment, including anchors that
-  overlap or nest. A comment on lines 10-30 and one on line 14 are separate.
+- Commenting on the same lines again edits that comment.
+- Commenting on different lines adds a new comment, even if the lines overlap
+  another comment. A comment on lines 10-30 and one on line 14 are separate.
 
 ==============================================================================
 4. RETENTION                                     *scratch-comments-retention*
 
-Comments are lost when the buffer is wiped (|:bwipeout|) or |:CommentClear|
-runs. Nothing else removes them. |:CommentExport| copies but never clears, so
-you may export as many times as you like.
+Comments go away when the buffer is deleted (|:bdelete|, |:bwipeout|) or when
+you run |:CommentClear|. Exporting leaves them in place, so you can export as
+often as you like. To keep comments, save an export to a file.
 
-Deleting every line a comment covers orphans it. An orphan is hidden but kept:
-|:CommentList| shows it last, |:CommentExport| lists it in an "Orphaned"
-section, and |undo| restores it. Delete one with |:CommentDelete| from a line
-with no comment.
+If you delete all the lines a comment is on, the comment becomes an orphan.
+Orphans are listed last in |:CommentList| and in an "Orphaned" section of the
+export, and |undo| restores them. To delete one, run |:CommentDelete| on a
+line with no comment.
 
-There is no persistence and no state file. To keep comments, paste an export
-into a file you own.
+In tmux you may need to set the clipboard to OSC 52 yourself: >lua
+    vim.g.clipboard = "osc52"
+<See |clipboard-osc52|.
 
 ==============================================================================
 5. HIGHLIGHT                                     *scratch-comments-highlight*
 
                                                         *ScratchCommentRange*
-Commented lines use ScratchCommentRange, linked to |hl-Visual| by default.
-Restyle it: >lua
+Commented lines use ScratchCommentRange, which links to |hl-Visual|. To
+change it: >lua
     vim.api.nvim_set_hl(0, "ScratchCommentRange", { bg = "#3b3520" })
 <
 
@@ -104,8 +110,8 @@ Restyle it: >lua
     scratch.edit()
     scratch.delete()
     scratch.list()
-    scratch.render()      -- Markdown string for all comments
-    scratch.export()      -- render and copy to the clipboard
+    scratch.render(format)             -- "markdown" (default) or "json"
+    scratch.export(format, in_buffer)  -- copy, or open in a scratch buffer
     scratch.clear()
 <
 Example mappings: >lua

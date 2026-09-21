@@ -18,34 +18,15 @@ local function line_range(comment)
   return "lines " .. comment.start_line .. "-" .. comment.end_line
 end
 
-local function sorted(items)
-  table.sort(items, function(a, b)
-    local a_path = a.relative_path or a.file_path
-    local b_path = b.relative_path or b.file_path
-    if a_path == b_path then
-      if a.start_line == b.start_line then
-        if a.end_line == b.end_line then
-          return tostring(a.id or "") < tostring(b.id or "")
-        end
-        return a.end_line < b.end_line
-      end
-      return a.start_line < b.start_line
-    end
-    return a_path < b_path
-  end)
-  return items
-end
-
 ---@param items ScratchCommentView[]
 ---@param orphans ScratchComment[]
 ---@return string
 function M.render(items, orphans)
-  local comments = sorted(vim.deepcopy(items))
   local lines = { "Comments:", "" }
 
   local current_file = nil
-  for _, comment in ipairs(comments) do
-    local file = comment.relative_path or comment.file_path
+  for _, comment in ipairs(items) do
+    local file = comment.relative_path
     if file ~= current_file then
       current_file = file
       table.insert(lines, "## " .. file)

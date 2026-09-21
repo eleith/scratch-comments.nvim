@@ -14,7 +14,7 @@ function M.check()
   else
     vim.health.warn(
       "No clipboard provider found. Install wl-clipboard, xclip or xsel, "
-        .. "or set vim.g.clipboard = require('vim.ui.clipboard.osc52')"
+        .. "or set vim.g.clipboard = 'osc52'"
     )
   end
 end

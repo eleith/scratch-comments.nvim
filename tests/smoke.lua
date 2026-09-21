@@ -142,4 +142,12 @@ assert_equal(qf.items[1].text, "quickfix check", "quickfix entry should carry th
 vim.cmd("cclose")
 vim.cmd("CommentClear")
 
+vim.cmd.edit("LICENSE")
+inputs = { "license comment" }
+vim.cmd("Comment")
+vim.cmd("edit!")
+assert_equal(#state.anchored(), 1, ":e! must keep the buffer's comments")
+vim.cmd("bdelete")
+assert_equal(count(), 0, ":bd must drop the buffer's comments")
+
 print("smoke: ok")

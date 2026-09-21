@@ -9,7 +9,6 @@ local M = {}
 ---@field comment string
 ---@field file_path string
 ---@field relative_path string
----@field timestamp string
 
 ---@class ScratchCommentView : ScratchComment
 ---@field start_line integer 1-based, inclusive.
@@ -22,7 +21,10 @@ local next_id = 1
 
 ---@param a ScratchCommentView
 ---@param b ScratchCommentView
-local function compare_position(a, b)
+local function by_position(a, b)
+  if a.relative_path ~= b.relative_path then
+    return a.relative_path < b.relative_path
+  end
   if a.start_line ~= b.start_line then
     return a.start_line < b.start_line
   end
@@ -41,7 +43,6 @@ function M.add(fields)
     comment = fields.comment,
     file_path = fields.file_path,
     relative_path = fields.relative_path,
-    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
   }
   next_id = next_id + 1
   table.insert(items, comment)
@@ -64,6 +65,7 @@ function M.anchored()
       table.insert(views, view)
     end
   end
+  table.sort(views, by_position)
   return views
 end
 
@@ -75,9 +77,7 @@ end
 ---@param predicate fun(comment: ScratchCommentView): boolean
 ---@return ScratchCommentView[]
 function M.find_all(predicate)
-  local matches = vim.tbl_filter(predicate, M.anchored())
-  table.sort(matches, compare_position)
-  return matches
+  return vim.tbl_filter(predicate, M.anchored())
 end
 
 ---@param predicate fun(comment: ScratchCommentView): boolean

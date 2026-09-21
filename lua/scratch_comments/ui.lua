@@ -37,6 +37,17 @@ function M.show(views)
   vim.lsp.util.open_floating_preview(lines, "markdown")
 end
 
+---@param text string
+---@param filetype string
+function M.open_scratch(text, filetype)
+  vim.cmd.new()
+  vim.bo.buftype = "nofile"
+  vim.bo.bufhidden = "wipe"
+  vim.bo.swapfile = false
+  vim.bo.filetype = filetype
+  vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(text, "\n"))
+end
+
 -- Quickfix rather than a picker: any quickfix front-end (Trouble, Snacks,
 -- Telescope, nvim-bqf) can display it.
 ---@param items ScratchCommentView[]
