@@ -3,6 +3,13 @@ local M = {}
 ---@type string[]
 M.notifications = {}
 
+-- Notifications are scheduled; this runs them before reading the list.
+---@return string[]
+function M.notified()
+  vim.wait(0)
+  return M.notifications
+end
+
 ---@diagnostic disable-next-line: duplicate-set-field -- record instead of printing
 vim.notify = function(message)
   table.insert(M.notifications, message)
@@ -75,7 +82,8 @@ local select = vim.ui.select
 ---@type any[] the items the last vim.ui.select offered
 M.offered = {}
 
--- Answers each vim.ui.select with the next index given, then with 1.
+-- Answers each vim.ui.select with the next index given, then with 1. An index
+-- past the items (such as 0) cancels.
 ---@param ... integer
 function M.pick(...)
   local choices = { ... }
@@ -110,6 +118,7 @@ function M.reset()
   vim.cmd("silent! %bwipeout!")
   vim.ui.select = select
   M.offered = {}
+  vim.wait(0)
   M.notifications = {}
 end
 

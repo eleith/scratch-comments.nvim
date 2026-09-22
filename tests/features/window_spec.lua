@@ -60,3 +60,28 @@ describe("the comment window", function()
     expect.equality(#helpers.floats(), 0)
   end)
 end)
+
+describe("the border", function()
+  local winborder
+
+  before_each(function()
+    winborder = vim.o.winborder
+    vim.cmd("quit")
+  end)
+
+  after_each(function()
+    vim.o.winborder = winborder
+  end)
+
+  it("is rounded when 'winborder' is not set", function()
+    vim.o.winborder = ""
+    vim.cmd("CommentShow")
+    expect.equality(vim.api.nvim_win_get_config(0).border[1], "╭")
+  end)
+
+  it("follows 'winborder' when it is set", function()
+    vim.o.winborder = "single"
+    vim.cmd("CommentShow")
+    expect.equality(vim.api.nvim_win_get_config(0).border[1], "┌")
+  end)
+end)

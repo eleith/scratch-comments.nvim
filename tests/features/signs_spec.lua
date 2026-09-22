@@ -52,6 +52,12 @@ describe(":CommentToggle", function()
     expect.equality(helpers.sign_at(1), "│")
   end)
 
+  it("with anything but on or off shows its usage and changes nothing", function()
+    vim.cmd("CommentToggle bogus")
+    expect.equality(helpers.sign_at(1), "│")
+    expect.equality(helpers.notified()[#helpers.notified()], "Usage: :CommentToggle [on|off]")
+  end)
+
   it("keeps comments added while hidden hidden, until shown", function()
     vim.cmd("CommentToggle off")
     vim.cmd("2Comment")

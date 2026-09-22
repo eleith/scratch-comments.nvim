@@ -54,6 +54,18 @@ describe(":CommentExport", function()
     expect.equality(vim.json.decode(copied).comments[2].comment, "on c")
   end)
 
+  it("says so when the clipboard can't be written", function()
+    ---@diagnostic disable-next-line: duplicate-set-field -- test fake
+    clipboard.copy = function()
+      return false
+    end
+    vim.cmd("CommentExport")
+    expect.equality(
+      helpers.notified()[#helpers.notified()],
+      "Could not copy to the clipboard; no provider configured?"
+    )
+  end)
+
   it("copies nothing for an unknown format", function()
     vim.cmd("CommentExport bogus")
     expect.equality(copied, nil)
@@ -96,5 +108,39 @@ describe("markdown", function()
     vim.cmd("1,2Comment")
     helpers.write("on a and b")
     expect.no_equality(scratch.render():find("lines 1-2", 1, true), nil)
+  end)
+end)
+
+describe("comments in several files", function()
+  before_each(function()
+    helpers.buffer("a-first.md", { "a" })
+    vim.cmd("Comment")
+    helpers.write("in a-first")
+  end)
+
+  it("are listed by file, then line", function()
+    vim.cmd("CommentList")
+    local files = vim.tbl_map(function(item)
+      return vim.fn.fnamemodify(vim.fn.bufname(item.bufnr), ":t")
+    end, vim.fn.getqflist())
+    expect.equality(table.concat(files, ","), "a-first.md,export-fixture.lua,export-fixture.lua")
+    vim.cmd("cclose")
+  end)
+
+  it("are exported by file, then line", function()
+    local markdown = scratch.render()
+    expect.equality(
+      markdown:find("## a-first.md", 1, true) < markdown:find("## export-fixture.lua", 1, true),
+      true
+    )
+  end)
+end)
+
+describe("a snippet containing a code fence", function()
+  it("is fenced with four backticks", function()
+    helpers.buffer("fence.md", { "```lua", "x = 1", "```" })
+    vim.cmd("1,3Comment")
+    helpers.write("on a fence")
+    expect.no_equality(scratch.render():find("````md\n```lua", 1, true), nil)
   end)
 end)
