@@ -28,6 +28,7 @@ end
 local function frame_buffer(lines, filetype)
   local bufnr = vim.api.nvim_create_buf(false, true)
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+  vim.bo[bufnr].modified = false
   vim.bo[bufnr].bufhidden = "wipe"
   vim.bo[bufnr].filetype = filetype
   return bufnr
@@ -51,7 +52,9 @@ function M.open_frame(frame)
   local col = math.floor((vim.o.columns - width) / 2)
   local border = vim.o.winborder == "" and "rounded" or nil
 
-  local context_win = vim.api.nvim_open_win(frame_buffer(frame.context, frame.filetype), false, {
+  local context_buf = frame_buffer(frame.context, frame.filetype)
+  vim.bo[context_buf].modifiable = false
+  local context_win = vim.api.nvim_open_win(context_buf, false, {
     relative = "editor",
     row = row,
     col = col,
@@ -79,15 +82,27 @@ function M.open_frame(frame)
   })
   vim.wo[comment_win].wrap = true
   vim.wo[comment_win].linebreak = true
+  for _, win in ipairs({ context_win, comment_win }) do
+    vim.wo[win].winhighlight = "NormalFloat:Normal"
+  end
 
-  for _, pair in ipairs({ { context_win, comment_win }, { comment_win, context_win } }) do
-    vim.api.nvim_create_autocmd("WinClosed", {
-      pattern = tostring(pair[1]),
-      once = true,
-      callback = function()
-        pcall(vim.api.nvim_win_close, pair[2], true)
-      end,
-    })
+  vim.api.nvim_create_autocmd("WinClosed", {
+    pattern = tostring(comment_win),
+    once = true,
+    callback = function()
+      pcall(vim.api.nvim_win_close, context_win, true)
+    end,
+  })
+  vim.api.nvim_create_autocmd("WinClosed", {
+    pattern = tostring(context_win),
+    once = true,
+    callback = function()
+      -- Not forced, so an unsaved comment stays open instead of being lost.
+      pcall(vim.api.nvim_win_close, comment_win, false)
+    end,
+  })
+  for _, buf in ipairs({ context_buf, comment_buf }) do
+    vim.keymap.set("n", "<Esc>", "<Cmd>quit<CR>", { buffer = buf, desc = "Close" })
   end
 
   if not frame.on_save then

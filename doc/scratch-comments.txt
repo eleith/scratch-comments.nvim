@@ -37,13 +37,15 @@ Add your own mappings. See |scratch-comments-api| for examples.
                         A window opens in the middle of the screen: the lines
                         you are commenting on at the top, your comment below.
                         Write as many lines as you like, then |:wq| to save
-                        or |:q!| to cancel.
+                        or |:q!| to cancel. <Esc> closes it when nothing is
+                        unsaved. |CTRL-W_w| moves between the two parts, or
+                        scroll them with the mouse.
 
                                                                 *:CommentShow*
 :CommentShow            Show the comment at the cursor in the same window,
                         read-only, with the lines it is on. If more than one
-                        comment covers the line, asks which one. |:q| closes
-                        it.
+                        comment covers the line, asks which one. |:q| or <Esc>
+                        closes it.
 
                                                                 *:CommentEdit*
 :CommentEdit            Edit the comment at the cursor in the same window. If

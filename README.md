@@ -38,7 +38,8 @@ comment on a range, or select lines and type `:Comment`:
 
 a window opens in the middle of the screen, with the lines you're commenting on
 at the top and your comment below. write as many lines as you like, then `:wq`
-to save, or `:q!` to cancel.
+to save, or `:q!` to cancel. `esc` closes it when there's nothing unsaved.
+`<C-w>w` moves between the two parts, or scroll them with the mouse.
 
 commented lines get a mark in the sign column: `│` for one line, and `╭` `│` `╰`
 down a range. read a comment on the cursor line, in the same window:
