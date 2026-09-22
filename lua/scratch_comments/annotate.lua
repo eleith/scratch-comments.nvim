@@ -1,4 +1,5 @@
 local context = require("scratch_comments.context")
+local location = require("scratch_comments.location")
 local render = require("scratch_comments.render")
 local state = require("scratch_comments.state")
 local store = require("scratch_comments.model.store")
@@ -44,30 +45,6 @@ local function cursor_comments()
   return state.find_all(function(comment)
     return comment.bufnr == bufnr and comment.start_line <= line and line <= comment.end_line
   end)
-end
-
----@param file_path string
----@param start_line integer
----@param end_line integer
----@param start_col? integer
----@param end_col? integer
----@return string
-local function title(file_path, start_line, end_line, start_col, end_col)
-  local name = vim.fn.fnamemodify(file_path, ":t")
-  if start_col and end_col then
-    local first, last = start_col + 1, end_col
-    if start_line ~= end_line then
-      return ("%s [lines %d:%d–%d:%d]"):format(name, start_line, first, end_line, last)
-    end
-    if first == last then
-      return ("%s [line %d, col %d]"):format(name, start_line, first)
-    end
-    return ("%s [line %d, col %d–%d]"):format(name, start_line, first, last)
-  end
-  if start_line == end_line then
-    return name .. " [line " .. start_line .. "]"
-  end
-  return name .. " [lines " .. start_line .. "–" .. end_line .. "]"
 end
 
 ---@class ScratchCommentWindow
@@ -118,7 +95,7 @@ end
 local function show(view, source_win)
   local views = file_views(view.bufnr)
   open({
-    title = title(view.file_path, view.start_line, view.end_line, view.start_col, view.end_col),
+    title = location.title(view.file_path, view),
     context = vim.split(view.snippet, "\n"),
     filetype = vim.bo[view.bufnr].filetype,
     comment = view.comment,
@@ -195,7 +172,12 @@ function M.range(start_line, end_line, use_selection)
   ---@type ScratchCommentWindow
   local window = { bufnr = bufnr, line = start_line, source_win = vim.api.nvim_get_current_win() }
   open({
-    title = title(file_path, start_line, end_line, start_col, end_col),
+    title = location.title(file_path, {
+      start_line = start_line,
+      end_line = end_line,
+      start_col = start_col,
+      end_col = end_col,
+    }),
     context = state.text(bufnr, start_line, end_line, start_col, end_col),
     filetype = vim.bo[bufnr].filetype,
     comment = "",

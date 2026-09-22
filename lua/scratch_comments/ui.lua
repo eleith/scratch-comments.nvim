@@ -1,3 +1,5 @@
+local location = require("scratch_comments.location")
+
 local M = {}
 
 local mode_names = {
@@ -30,18 +32,6 @@ end
 ---@return string
 function M.summary(text)
   return vim.split(text, "\n")[1]
-end
-
--- Cuts from the left so the line range and the file extension stay visible.
----@param text string
----@param width integer
----@return string
-local function fit(text, width)
-  local start = 0
-  while vim.api.nvim_strwidth(vim.fn.strcharpart(text, start)) > width do
-    start = start + 1
-  end
-  return start == 0 and text or "…" .. vim.fn.strcharpart(text, start + 1)
 end
 
 ---@param lines string[]
@@ -86,7 +76,7 @@ function M.open_frame(frame)
     width = width,
     height = context_height,
     border = border,
-    title = " " .. fit(frame.title, width - 2) .. " ",
+    title = " " .. location.fit(frame.title, width - 2) .. " ",
     title_pos = "center",
     style = "minimal",
   })

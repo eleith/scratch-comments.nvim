@@ -3,11 +3,7 @@ local store = require("scratch_comments.model.store")
 
 local M = {}
 
----@class ScratchCommentView : ScratchComment
----@field start_line integer 1-based, inclusive.
----@field end_line integer 1-based, inclusive.
----@field start_col? integer 0-based byte, for a character span.
----@field end_col? integer 0-based byte, exclusive.
+---@class ScratchCommentView : ScratchComment, ScratchLocation
 ---@field snippet string
 
 ---@param id string
