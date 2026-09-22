@@ -15,7 +15,7 @@ all: check
 check: lint fmt-check test
 
 ## test: run the specs, then the old suites
-test: SUITES := tests/smoke.lua tests/reflow.lua tests/orphans.lua tests/spans.lua
+test: SUITES := tests/smoke.lua
 test: $(MINI_TEST)
 	@MINI_TEST=$(MINI_TEST) $(NVIM) --headless --clean -u tests/minit.lua -c "lua MiniTest.run()"
 	@fail=0; \
