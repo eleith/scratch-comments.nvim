@@ -2,7 +2,9 @@ local comments = require("scratch_comments.comments")
 local location = require("scratch_comments.location")
 local paths = require("scratch_comments.paths")
 local views = require("scratch_comments.model.views")
+local notify = require("scratch_comments.ui.notify")
 local ui = require("scratch_comments.ui")
+local window = require("scratch_comments.ui.window")
 
 local M = {}
 
@@ -46,30 +48,6 @@ local function cursor_comments()
   end)
 end
 
----@class ScratchCommentWindow
----@field id? string unset until a new comment is saved
----@field bufnr integer
----@field line integer
----@field source_win integer
----@field comment_win? integer
-
----@type ScratchCommentWindow?
-local open_window
-
----@param frame ScratchFrame
----@param window ScratchCommentWindow
-local function open(frame, window)
-  local comment_win
-  frame.on_close = function()
-    if open_window and open_window.comment_win == comment_win then
-      open_window = nil
-    end
-  end
-  comment_win = ui.open_frame(frame)
-  window.comment_win = comment_win
-  open_window = window
-end
-
 ---@param bufnr integer
 ---@return ScratchCommentView[]
 local function file_views(bufnr)
@@ -93,7 +71,7 @@ end
 ---@param source_win integer
 local function show(view, source_win)
   local in_file = file_views(view.bufnr)
-  open({
+  window.open({
     title = location.title(view.file_path, view),
     context = vim.split(view.snippet, "\n"),
     filetype = vim.bo[view.bufnr].filetype,
@@ -101,45 +79,45 @@ local function show(view, source_win)
     comment_title = ("comment (%d of %d)"):format(index_of(in_file, view.id) or 0, #in_file),
     on_save = function(text)
       comments.edit(view.id, text)
-      ui.notify("Updated comment", "info")
+      notify.info("Updated comment")
     end,
   }, { id = view.id, bufnr = view.bufnr, line = view.start_line, source_win = source_win })
 end
 
----@param window ScratchCommentWindow
+---@param current ScratchCommentWindow
 ---@param direction 1|-1
-local function cycle(window, direction)
-  if vim.bo[vim.api.nvim_win_get_buf(window.comment_win)].modified then
-    ui.notify("Save or discard the comment first", "warn")
+local function cycle(current, direction)
+  if vim.bo[vim.api.nvim_win_get_buf(current.comment_win)].modified then
+    notify.warn("Save or discard the comment first")
     return
   end
-  local in_file = file_views(window.bufnr)
+  local in_file = file_views(current.bufnr)
   if #in_file == 0 then
     return
   end
 
-  local index = index_of(in_file, window.id)
+  local index = index_of(in_file, current.id)
   local target
   if index then
     target = in_file[(index - 1 + direction) % #in_file + 1]
   elseif direction == 1 then
     target = vim.iter(in_file):find(function(view)
-      return view.start_line > window.line
+      return view.start_line > current.line
     end) or in_file[1]
   else
     target = vim.iter(in_file):rev():find(function(view)
-      return view.start_line < window.line
+      return view.start_line < current.line
     end) or in_file[#in_file]
   end
 
-  vim.api.nvim_win_close(window.comment_win, true)
-  if vim.api.nvim_win_is_valid(window.source_win) then
-    vim.api.nvim_win_call(window.source_win, function()
+  vim.api.nvim_win_close(current.comment_win, true)
+  if vim.api.nvim_win_is_valid(current.source_win) then
+    vim.api.nvim_win_call(current.source_win, function()
       vim.cmd("normal! m'")
       vim.api.nvim_win_set_cursor(0, { target.start_line, target.start_col or 0 })
     end)
   end
-  show(target, window.source_win)
+  show(target, current.source_win)
 end
 
 ---@param start_line integer
@@ -149,7 +127,7 @@ function M.range(start_line, end_line, use_selection)
   local bufnr = vim.api.nvim_get_current_buf()
   local name = vim.api.nvim_buf_get_name(bufnr)
   if name == "" then
-    ui.notify("Save the buffer before commenting on it", "warn")
+    notify.warn("Save the buffer before commenting on it")
     return
   end
   start_line, end_line = math.min(start_line, end_line), math.max(start_line, end_line)
@@ -169,8 +147,8 @@ function M.range(start_line, end_line, use_selection)
   ---@type ScratchComment?
   local added
   ---@type ScratchCommentWindow
-  local window = { bufnr = bufnr, line = start_line, source_win = vim.api.nvim_get_current_win() }
-  open({
+  local record = { bufnr = bufnr, line = start_line, source_win = vim.api.nvim_get_current_win() }
+  window.open({
     title = location.title(file_path, {
       start_line = start_line,
       end_line = end_line,
@@ -199,10 +177,10 @@ function M.range(start_line, end_line, use_selection)
         start_col = start_col,
         end_col = end_col,
       })
-      window.id = added.id
-      ui.notify("Added comment", "info")
+      record.id = added.id
+      notify.info("Added comment")
     end,
-  }, window)
+  }, record)
 end
 
 ---@param view ScratchCommentView
@@ -230,13 +208,13 @@ end
 ---@param comment ScratchComment
 local function delete(comment)
   comments.delete(comment)
-  ui.notify("Deleted comment", "info")
+  notify.info("Deleted comment")
 end
 
 function M.show_current()
   local at_cursor = cursor_comments()
   if #at_cursor == 0 then
-    ui.notify("No comment at cursor", "info")
+    notify.info("No comment at cursor")
     return
   end
   local source_win = vim.api.nvim_get_current_win()
@@ -247,8 +225,9 @@ end
 
 ---@param direction 1|-1
 function M.jump(direction)
-  if open_window and vim.api.nvim_win_is_valid(open_window.comment_win) then
-    cycle(open_window, direction)
+  local current = window.current()
+  if current then
+    cycle(current, direction)
     return
   end
 
@@ -262,7 +241,7 @@ function M.jump(direction)
   end
   local lines = vim.tbl_keys(starts)
   if #lines == 0 then
-    ui.notify("No comments in this buffer", "info")
+    notify.info("No comments in this buffer")
     return
   end
   table.sort(lines)
@@ -302,7 +281,7 @@ function M.delete_current()
     return comment.bufnr == bufnr
   end, views.orphans())
   if #orphans == 0 then
-    ui.notify("No comment at cursor", "info")
+    notify.info("No comment at cursor")
     return
   end
 

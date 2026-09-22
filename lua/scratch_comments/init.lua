@@ -5,6 +5,7 @@ local json = require("scratch_comments.export.json")
 local markdown = require("scratch_comments.export.markdown")
 local signs = require("scratch_comments.ui.signs")
 local views = require("scratch_comments.model.views")
+local notify = require("scratch_comments.ui.notify")
 local ui = require("scratch_comments.ui")
 
 local M = {}
@@ -51,14 +52,14 @@ function M.export(format, in_buffer)
   format = format or "markdown"
   local render_format = formats[format]
   if not render_format then
-    ui.notify("Unknown format: " .. format, "error")
+    notify.error("Unknown format: " .. format)
     return
   end
 
   local items, orphans = views.anchored(), views.orphans()
   local count = #items + #orphans
   if count == 0 then
-    ui.notify("No comments to export", "info")
+    notify.info("No comments to export")
     return
   end
 
@@ -69,11 +70,11 @@ function M.export(format, in_buffer)
   end
 
   if not clipboard.copy(text) then
-    ui.notify("Could not copy to the clipboard; no provider configured?", "error")
+    notify.error("Could not copy to the clipboard; no provider configured?")
     return
   end
 
-  ui.notify("Copied " .. count .. " comment(s)", "info")
+  notify.info("Copied " .. count .. " comment(s)")
 end
 
 ---@param on? boolean
@@ -86,7 +87,7 @@ end
 
 function M.clear()
   comments.clear()
-  ui.notify("Cleared comments", "info")
+  notify.info("Cleared comments")
 end
 
 function M.setup()
@@ -122,7 +123,7 @@ function M.setup()
   vim.api.nvim_create_user_command("CommentToggle", function(ctx)
     local choice = ctx.fargs[1]
     if choice ~= nil and choice ~= "on" and choice ~= "off" then
-      ui.notify("Usage: :CommentToggle [on|off]", "error")
+      notify.error("Usage: :CommentToggle [on|off]")
       return
     end
     if choice == nil then
