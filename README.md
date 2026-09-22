@@ -71,10 +71,9 @@ it, pipe it to a command, or edit it:
 | Command | Does |
 | --- | --- |
 | `:Comment` | Comment on the current line or command range |
-| `:CommentShow` | Show the comment at the cursor, with the lines it's on |
+| `:CommentShow` | Show the comment at the cursor, with the lines it's on. Edit it there and `:w` to save |
 | `:CommentNext` | Go to the next comment in the file |
 | `:CommentPrev` | Go to the previous comment in the file |
-| `:CommentEdit` | Edit the comment at the cursor |
 | `:CommentDelete` | Delete the comment at the cursor, or pick an orphaned one |
 | `:CommentList` | Put comments in the quickfix list and open it |
 | `:CommentExport[!] [format]` | Copy all comments to the clipboard as `markdown` (default) or `json`. `!` opens them in a scratch buffer |
@@ -98,8 +97,8 @@ vim.keymap.set("n", "<leader>cx", "<Cmd>CommentExport<CR>", { desc = "Copy comme
 ## browsing
 
 `:CommentNext` and `:CommentPrev` move between comments in the current file,
-wrapping at the ends. With a `:CommentShow` window open, they show the next or
-previous comment in that window instead. `:CommentList` puts all your comments in the quickfix
+wrapping at the ends. With a comment open, they show the next or previous
+comment in its place. save or discard your changes first. `:CommentList` puts all your comments in the quickfix
 list, so `]q` and `[q` move between them across files, and any quickfix viewer
 works:
 
@@ -142,7 +141,6 @@ scratch.add(start_line, end_line)  -- default: the cursor line
 scratch.show()
 scratch.next()
 scratch.prev()
-scratch.edit()
 scratch.delete()
 scratch.list()
 scratch.render(format)             -- "markdown" (default) or "json"

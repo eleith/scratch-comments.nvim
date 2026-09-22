@@ -29,10 +29,6 @@ function M.prev()
   annotate.jump(-1)
 end
 
-function M.edit()
-  annotate.edit_current()
-end
-
 function M.delete()
   annotate.delete_current()
 end
@@ -123,11 +119,6 @@ function M.setup()
     "CommentShow",
     M.show,
     { desc = "Show the comments at the cursor" }
-  )
-  vim.api.nvim_create_user_command(
-    "CommentEdit",
-    M.edit,
-    { desc = "Edit the comment at the cursor" }
   )
   vim.api.nvim_create_user_command(
     "CommentDelete",

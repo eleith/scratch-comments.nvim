@@ -61,7 +61,7 @@ end
 ---@field context string[]
 ---@field filetype string
 ---@field comment string
----@field on_save? fun(text: string)
+---@field on_save fun(text: string)
 ---@field on_close? fun()
 ---@field comment_title? string
 
@@ -99,7 +99,7 @@ function M.open_frame(frame)
     width = width,
     height = comment_height,
     border = border,
-    title = " " .. (frame.comment_title or "comment") .. " ",
+    title = " comment ",
     title_pos = "center",
     style = "minimal",
   })
@@ -129,19 +129,14 @@ function M.open_frame(frame)
     end,
   })
 
-  if not frame.on_save then
-    vim.bo[comment_buf].modifiable = false
-    return comment_win
-  end
-
   local function show_mode()
     if vim.api.nvim_win_is_valid(comment_win) then
       local mode = vim.api.nvim_get_mode().mode:sub(1, 1)
       local name = mode_names[mode] or "NORMAL"
-      vim.api.nvim_win_set_config(
-        comment_win,
-        { title = " comment [" .. name .. "] ", title_pos = "center" }
-      )
+      vim.api.nvim_win_set_config(comment_win, {
+        title = " " .. (frame.comment_title or "comment") .. " [" .. name .. "] ",
+        title_pos = "center",
+      })
       vim.cmd.redraw()
     end
   end

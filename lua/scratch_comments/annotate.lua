@@ -69,26 +69,29 @@ local function title(file_path, start_line, end_line, start_col, end_col)
   return name .. " [lines " .. start_line .. "–" .. end_line .. "]"
 end
 
----@param view ScratchCommentView
----@param fields table on_save, on_close or comment_title for ui.open_frame
----@return integer comment_win
-local function open_frame(view, fields)
-  return ui.open_frame(vim.tbl_extend("error", {
-    title = title(view.file_path, view.start_line, view.end_line, view.start_col, view.end_col),
-    context = vim.split(view.snippet, "\n"),
-    filetype = vim.bo[view.bufnr].filetype,
-    comment = view.comment,
-  }, fields))
-end
-
----@class ScratchPreview
----@field id string
+---@class ScratchCommentWindow
+---@field id? string unset until a new comment is saved
 ---@field bufnr integer
+---@field line integer
 ---@field source_win integer
----@field comment_win integer
+---@field comment_win? integer
 
----@type ScratchPreview?
-local preview
+---@type ScratchCommentWindow?
+local open_window
+
+---@param frame ScratchFrame
+---@param window ScratchCommentWindow
+local function open(frame, window)
+  local comment_win
+  frame.on_close = function()
+    if open_window and open_window.comment_win == comment_win then
+      open_window = nil
+    end
+  end
+  comment_win = ui.open_frame(frame)
+  window.comment_win = comment_win
+  open_window = window
+end
 
 ---@param bufnr integer
 ---@return ScratchCommentView[]
@@ -99,7 +102,7 @@ local function file_views(bufnr)
 end
 
 ---@param views ScratchCommentView[]
----@param id string
+---@param id? string
 ---@return integer?
 local function index_of(views, id)
   for i, view in ipairs(views) do
@@ -113,52 +116,53 @@ end
 ---@param source_win integer
 local function show(view, source_win)
   local views = file_views(view.bufnr)
-  local comment_win
-  comment_win = open_frame(view, {
+  open({
+    title = title(view.file_path, view.start_line, view.end_line, view.start_col, view.end_col),
+    context = vim.split(view.snippet, "\n"),
+    filetype = vim.bo[view.bufnr].filetype,
+    comment = view.comment,
     comment_title = ("comment (%d of %d)"):format(index_of(views, view.id) or 0, #views),
-    on_close = function()
-      if preview and preview.comment_win == comment_win then
-        preview = nil
-      end
-    end,
-  })
-  preview = { id = view.id, bufnr = view.bufnr, source_win = source_win, comment_win = comment_win }
-end
-
----@param current ScratchPreview
----@param direction 1|-1
-local function cycle_preview(current, direction)
-  local views = file_views(current.bufnr)
-  if #views == 0 then
-    return
-  end
-
-  local index = index_of(views, current.id)
-  local target
-  if index then
-    target = views[(index - 1 + direction) % #views + 1]
-  else
-    target = direction == 1 and views[1] or views[#views]
-  end
-
-  vim.api.nvim_win_close(current.comment_win, true)
-  if vim.api.nvim_win_is_valid(current.source_win) then
-    vim.api.nvim_win_call(current.source_win, function()
-      vim.cmd("normal! m'")
-      vim.api.nvim_win_set_cursor(0, { target.start_line, target.start_col or 0 })
-    end)
-  end
-  show(target, current.source_win)
-end
-
----@param view ScratchCommentView
-local function edit(view)
-  open_frame(view, {
     on_save = function(text)
       state.update(view.id, { comment = text })
       ui.notify("Updated comment", "info")
     end,
-  })
+  }, { id = view.id, bufnr = view.bufnr, line = view.start_line, source_win = source_win })
+end
+
+---@param window ScratchCommentWindow
+---@param direction 1|-1
+local function cycle(window, direction)
+  if vim.bo[vim.api.nvim_win_get_buf(window.comment_win)].modified then
+    ui.notify("Save or discard the comment first", "warn")
+    return
+  end
+  local views = file_views(window.bufnr)
+  if #views == 0 then
+    return
+  end
+
+  local index = index_of(views, window.id)
+  local target
+  if index then
+    target = views[(index - 1 + direction) % #views + 1]
+  elseif direction == 1 then
+    target = vim.iter(views):find(function(view)
+      return view.start_line > window.line
+    end) or views[1]
+  else
+    target = vim.iter(views):rev():find(function(view)
+      return view.start_line < window.line
+    end) or views[#views]
+  end
+
+  vim.api.nvim_win_close(window.comment_win, true)
+  if vim.api.nvim_win_is_valid(window.source_win) then
+    vim.api.nvim_win_call(window.source_win, function()
+      vim.cmd("normal! m'")
+      vim.api.nvim_win_set_cursor(0, { target.start_line, target.start_col or 0 })
+    end)
+  end
+  show(target, window.source_win)
 end
 
 ---@param start_line integer
@@ -179,7 +183,7 @@ function M.range(start_line, end_line, use_selection)
 
   local existing = find_anchor(bufnr, start_line, end_line, start_col, end_col)
   if existing then
-    edit(existing)
+    show(existing, vim.api.nvim_get_current_win())
     return
   end
 
@@ -187,7 +191,9 @@ function M.range(start_line, end_line, use_selection)
   local relative_path = context.relative_path(context.git_root(file_path), file_path)
   ---@type ScratchComment?
   local added
-  ui.open_frame({
+  ---@type ScratchCommentWindow
+  local window = { bufnr = bufnr, line = start_line, source_win = vim.api.nvim_get_current_win() }
+  open({
     title = title(file_path, start_line, end_line, start_col, end_col),
     context = state.text(bufnr, start_line, end_line, start_col, end_col),
     filetype = vim.bo[bufnr].filetype,
@@ -207,11 +213,12 @@ function M.range(start_line, end_line, use_selection)
         relative_path = relative_path,
         charwise = start_col ~= nil,
       })
+      window.id = added.id
       render.anchor(added, start_line, end_line, start_col, end_col)
       render.draw_signs(bufnr, state.in_buffer(bufnr))
       ui.notify("Added comment", "info")
     end,
-  })
+  }, window)
 end
 
 ---@param view ScratchCommentView
@@ -257,8 +264,8 @@ end
 
 ---@param direction 1|-1
 function M.jump(direction)
-  if preview and vim.api.nvim_win_is_valid(preview.comment_win) then
-    cycle_preview(preview, direction)
+  if open_window and vim.api.nvim_win_is_valid(open_window.comment_win) then
+    cycle(open_window, direction)
     return
   end
 
@@ -298,15 +305,6 @@ function M.jump(direction)
 
   vim.cmd("normal! m'")
   vim.api.nvim_win_set_cursor(0, { target, 0 })
-end
-
-function M.edit_current()
-  local views = cursor_comments()
-  if #views == 0 then
-    ui.notify("No comment at cursor", "info")
-    return
-  end
-  choose(views, edit)
 end
 
 function M.delete_current()

@@ -115,7 +115,7 @@ assert_contains(
   "README.md [lines 1–3]",
   "the frame is titled with the commented lines"
 )
-assert_equal(vim.bo.modifiable, false, ":CommentShow is read-only")
+assert_equal(vim.bo.modifiable, true, ":CommentShow can edit the comment")
 assert_equal(
   vim.bo[vim.api.nvim_win_get_buf(context_win)].modifiable,
   false,
@@ -136,9 +136,9 @@ assert_equal(#floats(), 0, ":q closes the show window")
 
 vim.api.nvim_win_set_cursor(0, { 1, 0 })
 selections = { 2 }
-vim.cmd("CommentEdit")
+vim.cmd("CommentShow")
 write("picked the range")
-assert_equal(count(), 2, ":CommentEdit should not duplicate")
+assert_equal(count(), 2, "editing from :CommentShow should not duplicate")
 assert_contains(scratch.render(), "picked the range")
 
 vim.cmd("CommentExport")
@@ -289,7 +289,11 @@ vim.cmd("CommentShow")
 local function comment_title()
   return vim.api.nvim_win_get_config(0).title[1][1]
 end
-assert_equal(comment_title(), " comment (1 of 4) ", "the preview counts the file's comments")
+assert_equal(
+  comment_title(),
+  " comment (1 of 4) [NORMAL] ",
+  "the preview counts the file's comments"
+)
 local previewed = {}
 local file_lines = {}
 for _ = 1, 4 do
@@ -304,12 +308,26 @@ assert_equal(
 )
 assert_equal(table.concat(file_lines, ","), "4,4,7,2", "the cursor in the file follows the preview")
 assert_equal(#floats(), 2, "cycling keeps one preview open")
-assert_equal(comment_title(), " comment (1 of 4) ", "the count follows the preview")
+assert_equal(comment_title(), " comment (1 of 4) [NORMAL] ", "the count follows the preview")
 vim.cmd("CommentPrev")
 assert_equal(
   text_of(vim.api.nvim_get_current_win()),
   "on seven",
   ":CommentPrev goes back in a preview"
+)
+vim.api.nvim_buf_set_lines(0, 0, -1, false, { "unsaved" })
+vim.cmd("CommentNext")
+assert_equal(text_of(vim.api.nvim_get_current_win()), "unsaved", "unsaved changes stop a jump")
+vim.cmd("quit!")
+vim.api.nvim_set_current_win(file_win)
+vim.api.nvim_win_set_cursor(0, { 3, 0 })
+vim.cmd("Comment")
+vim.cmd("stopinsert")
+vim.cmd("CommentNext")
+assert_equal(
+  text_of(vim.api.nvim_get_current_win()),
+  "also on four",
+  "a new comment jumps from its line"
 )
 vim.cmd("quit")
 assert_equal(#floats(), 0, "closing the preview")

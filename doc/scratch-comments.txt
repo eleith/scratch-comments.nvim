@@ -46,28 +46,24 @@ Add your own mappings. See |scratch-comments-api| for examples.
 
                                                                 *:CommentShow*
 :CommentShow            Show the comment at the cursor in the same window,
-                        read-only, with the lines it is on. If more than one
-                        comment covers the line, asks which one. |:q| closes
-                        it.
+                        with the lines it is on. If more than one comment
+                        covers the line, asks which one. It opens in normal
+                        mode: edit the comment and |:w| to save, or |:q| to
+                        close it.
 
                                                                 *:CommentNext*
 :CommentNext            Go to the next comment in the current file, wrapping
                         at the end. Comments that start on the same line are
                         one stop.
 
-                        With a |:CommentShow| window open, show the next
-                        comment in it instead, one comment at a time. The
-                        cursor in the file follows.
+                        With a comment open, show the next comment in its
+                        place instead, one comment at a time. The cursor in
+                        the file follows. Save or discard your changes first.
 
                                                                 *:CommentPrev*
 :CommentPrev            Go to the previous comment in the current file,
-                        wrapping at the start. With a |:CommentShow| window
-                        open, show the previous comment in it.
-
-                                                                *:CommentEdit*
-:CommentEdit            Edit the comment at the cursor in the same window. If
-                        more than one comment covers the line, asks which
-                        one.
+                        wrapping at the start. With a comment open, show the
+                        previous comment in its place.
 
                                                               *:CommentDelete*
 :CommentDelete          Delete the comment at the cursor. If more than one
@@ -150,7 +146,6 @@ The signs use ScratchCommentSign, which links to |hl-Todo|. To change it: >lua
     scratch.show()
     scratch.next()
     scratch.prev()
-    scratch.edit()
     scratch.delete()
     scratch.list()
     scratch.render(format)             -- "markdown" (default) or "json"
