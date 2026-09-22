@@ -1,15 +1,7 @@
 local render = require("scratch_comments.render")
+local store = require("scratch_comments.model.store")
 
 local M = {}
-
----@class ScratchComment
----@field id string
----@field bufnr integer
----@field extmark_id? integer
----@field comment string
----@field file_path string
----@field relative_path string
----@field charwise? boolean
 
 ---@class ScratchCommentView : ScratchComment
 ---@field start_line integer 1-based, inclusive.
@@ -17,10 +9,6 @@ local M = {}
 ---@field start_col? integer 0-based byte, for a character span.
 ---@field end_col? integer 0-based byte, exclusive.
 ---@field snippet string
-
----@type ScratchComment[]
-local items = {}
-local next_id = 1
 
 ---@param a ScratchCommentView
 ---@param b ScratchCommentView
@@ -35,22 +23,6 @@ local function by_position(a, b)
     return a.end_line < b.end_line
   end
   return a.id < b.id
-end
-
----@param fields { bufnr: integer, comment: string, file_path: string, relative_path: string, charwise?: boolean }
----@return ScratchComment
-function M.add(fields)
-  local comment = {
-    id = "comment-" .. next_id,
-    bufnr = fields.bufnr,
-    comment = fields.comment,
-    file_path = fields.file_path,
-    relative_path = fields.relative_path,
-    charwise = fields.charwise,
-  }
-  next_id = next_id + 1
-  table.insert(items, comment)
-  return comment
 end
 
 ---@param bufnr integer
@@ -69,7 +41,7 @@ end
 ---@return ScratchCommentView[]
 function M.anchored()
   local views = {}
-  for _, comment in ipairs(items) do
+  for _, comment in ipairs(store.all()) do
     local start_line, end_line, start_col, end_col = render.range(comment)
     if start_line and end_line then
       local view = vim.deepcopy(comment) --[[@as ScratchCommentView]]
@@ -86,7 +58,7 @@ end
 
 ---@return ScratchComment[]
 function M.orphans()
-  return vim.tbl_filter(render.is_orphaned, items)
+  return vim.tbl_filter(render.is_orphaned, store.all())
 end
 
 ---@param predicate fun(comment: ScratchCommentView): boolean
@@ -99,76 +71,6 @@ end
 ---@return ScratchCommentView?
 function M.find(predicate)
   return M.find_all(predicate)[1]
-end
-
----@param id string
----@param fields table
----@return ScratchComment?
-function M.update(id, fields)
-  for _, comment in ipairs(items) do
-    if comment.id == id then
-      for key, value in pairs(fields) do
-        comment[key] = value
-      end
-      return comment
-    end
-  end
-  return nil
-end
-
----@return ScratchComment[]
-function M.all()
-  return items
-end
-
----@param bufnr integer
----@return ScratchComment[]
-function M.in_buffer(bufnr)
-  return vim.tbl_filter(function(comment)
-    return comment.bufnr == bufnr
-  end, items)
-end
-
-function M.clear()
-  items = {}
-end
-
----@param ids string[]
----@return ScratchComment[] removed
-function M.remove_ids(ids)
-  local idset = {}
-  for _, id in ipairs(ids) do
-    idset[id] = true
-  end
-
-  local kept = {}
-  local removed = {}
-  for _, comment in ipairs(items) do
-    if idset[comment.id] then
-      table.insert(removed, comment)
-    else
-      table.insert(kept, comment)
-    end
-  end
-
-  items = kept
-  return removed
-end
-
----@param bufnr integer
----@return ScratchComment[] removed
-function M.remove_buffer(bufnr)
-  local kept = {}
-  local removed = {}
-  for _, comment in ipairs(items) do
-    if comment.bufnr == bufnr then
-      table.insert(removed, comment)
-    else
-      table.insert(kept, comment)
-    end
-  end
-  items = kept
-  return removed
 end
 
 return M

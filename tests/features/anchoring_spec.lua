@@ -1,6 +1,7 @@
 local helpers = require("helpers")
 local scratch = require("scratch_comments")
 local state = require("scratch_comments.state")
+local store = require("scratch_comments.model.store")
 local expect = MiniTest.expect
 
 local function only()
@@ -149,6 +150,6 @@ describe("a file's comments", function()
 
   it("go with :bd", function()
     vim.cmd("bdelete")
-    expect.equality(#state.all(), 0)
+    expect.equality(#store.all(), 0)
   end)
 end)

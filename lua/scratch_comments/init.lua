@@ -4,6 +4,7 @@ local json = require("scratch_comments.json")
 local markdown = require("scratch_comments.markdown")
 local render = require("scratch_comments.render")
 local state = require("scratch_comments.state")
+local store = require("scratch_comments.model.store")
 local ui = require("scratch_comments.ui")
 
 local M = {}
@@ -78,7 +79,7 @@ end
 ---@return integer[]
 local function commented_buffers()
   local buffers = {}
-  for _, comment in ipairs(state.all()) do
+  for _, comment in ipairs(store.all()) do
     buffers[comment.bufnr] = true
   end
   return vim.tbl_keys(buffers)
@@ -86,7 +87,7 @@ end
 
 ---@param bufnr integer
 local function redraw(bufnr)
-  render.draw_signs(bufnr, state.in_buffer(bufnr))
+  render.draw_signs(bufnr, store.in_buffer(bufnr))
 end
 
 ---@param on? boolean
@@ -104,7 +105,7 @@ function M.clear()
   for _, bufnr in ipairs(commented_buffers()) do
     render.clear_buffer(bufnr)
   end
-  state.clear()
+  store.clear()
   ui.notify("Cleared comments", "info")
 end
 
@@ -171,7 +172,9 @@ function M.setup()
     group = group,
     callback = function(args)
       render.clear_buffer(args.buf)
-      state.remove_buffer(args.buf)
+      store.remove(function(comment)
+        return comment.bufnr == args.buf
+      end)
     end,
   })
 end
