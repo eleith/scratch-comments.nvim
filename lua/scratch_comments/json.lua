@@ -11,6 +11,8 @@ function M.render(items, orphans)
       relative_path = comment.relative_path,
       start_line = comment.start_line,
       end_line = comment.end_line,
+      start_col = comment.start_col and comment.start_col + 1,
+      end_col = comment.end_col,
       snippet = comment.snippet,
       comment = comment.comment,
     }

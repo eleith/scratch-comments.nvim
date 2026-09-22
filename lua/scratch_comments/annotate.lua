@@ -8,13 +8,32 @@ local M = {}
 ---@param bufnr integer
 ---@param start_line integer
 ---@param end_line integer
+---@param start_col? integer
+---@param end_col? integer
 ---@return ScratchCommentView?
-local function find_anchor(bufnr, start_line, end_line)
+local function find_anchor(bufnr, start_line, end_line, start_col, end_col)
   return state.find(function(comment)
     return comment.bufnr == bufnr
       and comment.start_line == start_line
       and comment.end_line == end_line
+      and comment.start_col == start_col
+      and comment.end_col == end_col
   end)
+end
+
+---@param start_line integer
+---@param end_line integer
+---@return integer? start_col
+---@return integer? end_col
+local function selected_columns(start_line, end_line)
+  local from, to = vim.fn.getpos("'<"), vim.fn.getpos("'>")
+  if vim.fn.visualmode() ~= "v" or from[2] ~= start_line or to[2] ~= end_line then
+    return nil, nil
+  end
+  local last_line = vim.fn.getline(end_line)
+  local last = math.min(to[3], #last_line)
+  local end_col = last == 0 and 0 or last + vim.str_utf_end(last_line, last)
+  return from[3] - 1, end_col
 end
 
 ---@return ScratchCommentView[]
@@ -29,9 +48,21 @@ end
 ---@param file_path string
 ---@param start_line integer
 ---@param end_line integer
+---@param start_col? integer
+---@param end_col? integer
 ---@return string
-local function title(file_path, start_line, end_line)
+local function title(file_path, start_line, end_line, start_col, end_col)
   local name = vim.fn.fnamemodify(file_path, ":t")
+  if start_col and end_col then
+    local first, last = start_col + 1, end_col
+    if start_line ~= end_line then
+      return ("%s [lines %d:%d–%d:%d]"):format(name, start_line, first, end_line, last)
+    end
+    if first == last then
+      return ("%s [line %d, col %d]"):format(name, start_line, first)
+    end
+    return ("%s [line %d, col %d–%d]"):format(name, start_line, first, last)
+  end
   if start_line == end_line then
     return name .. " [line " .. start_line .. "]"
   end
@@ -42,7 +73,7 @@ end
 ---@param on_save? fun(text: string)
 local function open_frame(view, on_save)
   ui.open_frame({
-    title = title(view.file_path, view.start_line, view.end_line),
+    title = title(view.file_path, view.start_line, view.end_line, view.start_col, view.end_col),
     context = vim.split(view.snippet, "\n"),
     filetype = vim.bo[view.bufnr].filetype,
     comment = view.comment,
@@ -60,7 +91,8 @@ end
 
 ---@param start_line integer
 ---@param end_line integer
-function M.range(start_line, end_line)
+---@param use_selection? boolean
+function M.range(start_line, end_line, use_selection)
   local bufnr = vim.api.nvim_get_current_buf()
   local name = vim.api.nvim_buf_get_name(bufnr)
   if name == "" then
@@ -68,8 +100,12 @@ function M.range(start_line, end_line)
     return
   end
   start_line, end_line = math.min(start_line, end_line), math.max(start_line, end_line)
+  local start_col, end_col
+  if use_selection then
+    start_col, end_col = selected_columns(start_line, end_line)
+  end
 
-  local existing = find_anchor(bufnr, start_line, end_line)
+  local existing = find_anchor(bufnr, start_line, end_line, start_col, end_col)
   if existing then
     edit(existing)
     return
@@ -80,8 +116,8 @@ function M.range(start_line, end_line)
   ---@type ScratchComment?
   local added
   ui.open_frame({
-    title = title(file_path, start_line, end_line),
-    context = vim.api.nvim_buf_get_lines(bufnr, start_line - 1, end_line, false),
+    title = title(file_path, start_line, end_line, start_col, end_col),
+    context = state.text(bufnr, start_line, end_line, start_col, end_col),
     filetype = vim.bo[bufnr].filetype,
     comment = "",
     on_save = function(text)
@@ -97,8 +133,9 @@ function M.range(start_line, end_line)
         comment = text,
         file_path = file_path,
         relative_path = relative_path,
+        charwise = start_col ~= nil,
       })
-      render.anchor(added, start_line, end_line)
+      render.anchor(added, start_line, end_line, start_col, end_col)
       render.draw_signs(bufnr, state.in_buffer(bufnr))
       ui.notify("Added comment", "info")
     end,

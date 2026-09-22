@@ -116,7 +116,7 @@ function M.setup()
   render.setup()
 
   vim.api.nvim_create_user_command("Comment", function(ctx)
-    M.add(ctx.line1, ctx.line2)
+    annotate.range(ctx.line1, ctx.line2, ctx.range == 2)
   end, { range = true, desc = "Comment on the current line or range" })
 
   vim.api.nvim_create_user_command(

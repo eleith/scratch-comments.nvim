@@ -9,10 +9,13 @@ local M = {}
 ---@field comment string
 ---@field file_path string
 ---@field relative_path string
+---@field charwise? boolean
 
 ---@class ScratchCommentView : ScratchComment
 ---@field start_line integer 1-based, inclusive.
 ---@field end_line integer 1-based, inclusive.
+---@field start_col? integer 0-based byte, for a character span.
+---@field end_col? integer 0-based byte, exclusive.
 ---@field snippet string
 
 ---@type ScratchComment[]
@@ -34,7 +37,7 @@ local function by_position(a, b)
   return a.id < b.id
 end
 
----@param fields { bufnr: integer, comment: string, file_path: string, relative_path: string }
+---@param fields { bufnr: integer, comment: string, file_path: string, relative_path: string, charwise?: boolean }
 ---@return ScratchComment
 function M.add(fields)
   local comment = {
@@ -43,25 +46,37 @@ function M.add(fields)
     comment = fields.comment,
     file_path = fields.file_path,
     relative_path = fields.relative_path,
+    charwise = fields.charwise,
   }
   next_id = next_id + 1
   table.insert(items, comment)
   return comment
 end
 
+---@param bufnr integer
+---@param start_line integer
+---@param end_line integer
+---@param start_col? integer
+---@param end_col? integer
+---@return string[]
+function M.text(bufnr, start_line, end_line, start_col, end_col)
+  if start_col and end_col then
+    return vim.api.nvim_buf_get_text(bufnr, start_line - 1, start_col, end_line - 1, end_col, {})
+  end
+  return vim.api.nvim_buf_get_lines(bufnr, start_line - 1, end_line, false)
+end
+
 ---@return ScratchCommentView[]
 function M.anchored()
   local views = {}
   for _, comment in ipairs(items) do
-    local start_line, end_line = render.range(comment)
+    local start_line, end_line, start_col, end_col = render.range(comment)
     if start_line and end_line then
       local view = vim.deepcopy(comment) --[[@as ScratchCommentView]]
-      view.start_line = start_line
-      view.end_line = end_line
-      view.snippet = table.concat(
-        vim.api.nvim_buf_get_lines(comment.bufnr, start_line - 1, end_line, false),
-        "\n"
-      )
+      view.start_line, view.end_line = start_line, end_line
+      view.start_col, view.end_col = start_col, end_col
+      view.snippet =
+        table.concat(M.text(comment.bufnr, start_line, end_line, start_col, end_col), "\n")
       table.insert(views, view)
     end
   end

@@ -30,9 +30,11 @@ Add your own mappings. See |scratch-comments-api| for examples.
 
                                                                     *:Comment*
 :[range]Comment         Comment on the current line, or on [range]. To comment
-                        on a selection, select lines and type ":Comment",
-                        which gives ":'<,'>Comment". If those exact lines
-                        already have a comment, edit it.
+                        on a selection, select it and type ":Comment", which
+                        gives ":'<,'>Comment". A characterwise selection
+                        (|v|) comments on just the selected text; a linewise
+                        one (|V|) on whole lines. If that exact text already
+                        has a comment, edit it.
 
                         A window opens in the middle of the screen: the lines
                         you are commenting on at the top, your comment below.
@@ -94,7 +96,8 @@ Add your own mappings. See |scratch-comments-api| for examples.
 ==============================================================================
 3. ANCHORS                                         *scratch-comments-anchors*
 
-A comment belongs to a file and a range of lines.
+A comment belongs to a file and a range of lines, or to the exact text you
+selected within them.
 
 - Commenting on the same lines again edits that comment.
 - Commenting on different lines adds a new comment, even if the lines overlap

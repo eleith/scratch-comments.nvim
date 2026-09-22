@@ -29,7 +29,8 @@ comment on the current line:
 :Comment
 ```
 
-comment on a range, or select lines and type `:Comment`:
+comment on a range, or select text and type `:Comment`. select whole lines to
+comment on them, or just a word or phrase to comment on only that:
 
 ```vim
 :12,16Comment

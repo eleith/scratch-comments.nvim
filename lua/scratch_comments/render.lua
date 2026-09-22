@@ -23,23 +23,29 @@ end
 ---@param comment ScratchComment
 ---@param start_line integer
 ---@param end_line integer
-function M.anchor(comment, start_line, end_line)
-  comment.extmark_id = vim.api.nvim_buf_set_extmark(comment.bufnr, namespace, start_line - 1, 0, {
+---@param start_col? integer
+---@param end_col? integer
+function M.anchor(comment, start_line, end_line, start_col, end_col)
+  local opts = { invalidate = true }
+  if start_col then
+    opts.end_row, opts.end_col = end_line - 1, end_col
+  else
     -- Ending at the start of the next line includes the line breaks, so
     -- rewriting a line's text keeps the mark and only deleting the lines
     -- invalidates it.
-    end_row = end_line,
-    end_col = 0,
-    invalidate = true,
-  })
+    opts.end_row, opts.end_col = end_line, 0
+  end
+  comment.extmark_id =
+    vim.api.nvim_buf_set_extmark(comment.bufnr, namespace, start_line - 1, start_col or 0, opts)
 end
 
 ---@param comment ScratchComment
 ---@return integer? row
+---@return integer? col
 ---@return vim.api.keyset.extmark_details? details
 local function get_mark(comment)
   if not comment.extmark_id or not vim.api.nvim_buf_is_valid(comment.bufnr) then
-    return nil, nil
+    return nil, nil, nil
   end
   local mark = vim.api.nvim_buf_get_extmark_by_id(
     comment.bufnr,
@@ -47,16 +53,21 @@ local function get_mark(comment)
     comment.extmark_id,
     { details = true }
   )
-  return mark[1], mark[3]
+  return mark[1], mark[2], mark[3]
 end
 
 ---@param comment ScratchComment
 ---@return integer? start_line
 ---@return integer? end_line
+---@return integer? start_col
+---@return integer? end_col
 function M.range(comment)
-  local row, details = get_mark(comment)
+  local row, col, details = get_mark(comment)
   if not row or not details or details.invalid then
-    return nil, nil
+    return nil, nil, nil, nil
+  end
+  if comment.charwise then
+    return row + 1, details.end_row + 1, col, details.end_col
   end
   -- end_row is the line after the range: as a 0-based row it is the range's
   -- last line numbered from 1.
@@ -66,7 +77,7 @@ end
 ---@param comment ScratchComment
 ---@return boolean
 function M.is_orphaned(comment)
-  local _, details = get_mark(comment)
+  local _, _, details = get_mark(comment)
   return details ~= nil and details.invalid == true
 end
 
