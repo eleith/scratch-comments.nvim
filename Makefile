@@ -19,10 +19,11 @@ test:
 		printf '%-22s ' "$$t"; \
 		out=$$($(NVIM) --headless --clean -u tests/minimal_init.lua \
 			-c "lua local ok,e=pcall(dofile,'$$t') if not ok then io.write('FAIL: '..tostring(e)..'\n') end vim.cmd('qa!')" \
-			2>&1 | grep -E '^(FAIL|[a-z]+: ok)' || true); \
+			2>&1 | grep -oE '(FAIL: .*|[a-z]+: ok)' || true); \
 		case "$$out" in \
-			FAIL*) echo "$$out"; fail=1 ;; \
-			*) echo "ok" ;; \
+			*FAIL*) echo "$$out"; fail=1 ;; \
+			*": ok") echo "ok" ;; \
+			*) echo "FAIL: no result"; fail=1 ;; \
 		esac; \
 	done; \
 	exit $$fail

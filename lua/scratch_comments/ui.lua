@@ -38,7 +38,7 @@ end
 ---@return string
 local function fit(text, width)
   local start = 0
-  while vim.fn.strdisplaywidth(vim.fn.strcharpart(text, start)) > width do
+  while vim.api.nvim_strwidth(vim.fn.strcharpart(text, start)) > width do
     start = start + 1
   end
   return start == 0 and text or "…" .. vim.fn.strcharpart(text, start + 1)

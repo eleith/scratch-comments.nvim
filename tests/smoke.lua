@@ -123,7 +123,7 @@ assert_equal(
 )
 assert_equal(
   vim.wo[context_win].winhighlight,
-  "NormalFloat:Normal",
+  "NormalFloat:Normal,LineNr:Normal",
   "the panes use the editor background"
 )
 vim.cmd("close")

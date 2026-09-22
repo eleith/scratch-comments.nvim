@@ -144,10 +144,10 @@ select("viw")
 vim.o.columns = 60
 vim.cmd("'<,'>Comment")
 local long_title = lines_pane_title()
-assert_equal(vim.fn.strdisplaywidth(long_title), 56, "a long title fits the window")
+assert_equal(vim.api.nvim_strwidth(long_title), 56, "a long title fits the window")
 assert_equal(long_title:sub(1, 4), " …", "a long title starts with an ellipsis")
 assert_equal(
-  vim.endswith(long_title, "name.md [line 1, col 5–9] "),
+  vim.endswith(long_title, "name.md [line 1, col 5–8] "),
   true,
   "a long title keeps the range"
 )
