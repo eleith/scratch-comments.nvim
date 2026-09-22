@@ -170,17 +170,23 @@ vim.cmd("CommentClear")
 
 vim.api.nvim_win_set_cursor(0, { 2, 0 })
 vim.cmd("Comment")
-assert_contains(
-  vim.api.nvim_win_get_config(0).footer[1][1],
-  ":wq save",
-  "the editor says how to save"
-)
+local function footer()
+  return vim.api.nvim_win_get_config(0).footer[1][1]
+end
+local footers = {}
+vim.api.nvim_create_autocmd("ModeChanged", {
+  buffer = 0,
+  callback = function()
+    table.insert(footers, footer())
+  end,
+})
+vim.cmd("normal! ihello")
+assert_equal(table.concat(footers, ","), " INSERT , NORMAL ", "the footer shows the current mode")
 vim.cmd("q!")
 assert_equal(count(), 0, "cancelling with :q! adds nothing")
 assert_equal(#floats(), 0, "cancelling closes the frame")
 
 vim.cmd("Comment")
-assert_equal(vim.api.nvim_get_mode().mode, "n", "the editor opens in normal mode")
 vim.cmd("quit")
 assert_equal(#floats(), 0, ":q closes an untouched editor")
 

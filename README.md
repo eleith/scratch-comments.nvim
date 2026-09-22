@@ -37,10 +37,10 @@ comment on a range, or select lines and type `:Comment`:
 ```
 
 a window opens in the middle of the screen, with the lines you're commenting on
-at the top and your comment below. it's a normal buffer: press `i` and write as
-many lines as you like, then `:wq` to save. `:q` closes it if you haven't
-changed anything, and `:q!` throws your changes away. `<C-w>w` moves between
-the two parts, or scroll them with the mouse.
+at the top and your comment below. it opens in insert mode, and its footer shows
+the mode you're in. write as many lines as you like, then `:wq` to save. `:q`
+closes it if you haven't changed anything, and `:q!` throws your changes away.
+`<C-w>w` moves between the two parts, or scroll them with the mouse.
 
 commented lines get a mark in the sign column: `│` for one line, and `╭` `│` `╰`
 down a range. read a comment on the cursor line, in the same window:

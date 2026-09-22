@@ -1,5 +1,15 @@
 local M = {}
 
+local mode_names = {
+  n = "NORMAL",
+  i = "INSERT",
+  v = "VISUAL",
+  V = "VISUAL",
+  ["\22"] = "VISUAL",
+  c = "COMMAND",
+  R = "REPLACE",
+}
+
 local function level(name)
   return vim.log.levels[(name or "info"):upper()] or vim.log.levels.INFO
 end
@@ -50,7 +60,7 @@ function M.open_frame(frame)
   -- Each pane has a top and a bottom border line.
   local row = math.floor((vim.o.lines - context_height - comment_height - 4) / 2)
   local col = math.floor((vim.o.columns - width) / 2)
-  local border = vim.o.winborder == "" and "rounded" or nil
+  local border = (vim.o.winborder == "" or vim.o.winborder == "none") and "rounded" or nil
 
   local context_buf = frame_buffer(frame.context, frame.filetype)
   vim.bo[context_buf].modifiable = false
@@ -76,8 +86,6 @@ function M.open_frame(frame)
     border = border,
     title = " comment ",
     title_pos = "center",
-    footer = frame.on_save and " :wq save · :q! cancel " or nil,
-    footer_pos = frame.on_save and "center" or nil,
     style = "minimal",
   })
   vim.wo[comment_win].wrap = true
@@ -107,8 +115,25 @@ function M.open_frame(frame)
     return
   end
 
+  local function show_mode()
+    if vim.api.nvim_win_is_valid(comment_win) then
+      local mode = vim.api.nvim_get_mode().mode:sub(1, 1)
+      local name = mode_names[mode] or "NORMAL"
+      vim.api.nvim_win_set_config(
+        comment_win,
+        { footer = " " .. name .. " ", footer_pos = "center" }
+      )
+      vim.cmd.redraw()
+    end
+  end
+  show_mode()
+  vim.api.nvim_create_autocmd("ModeChanged", { buffer = comment_buf, callback = show_mode })
+
   vim.bo[comment_buf].buftype = "acwrite"
   vim.api.nvim_buf_set_name(comment_buf, "scratch-comments://" .. comment_buf)
+  if frame.comment == "" then
+    vim.cmd.startinsert()
+  end
   vim.api.nvim_create_autocmd("BufWriteCmd", {
     buffer = comment_buf,
     callback = function()
