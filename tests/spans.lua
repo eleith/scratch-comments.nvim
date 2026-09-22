@@ -136,4 +136,21 @@ write("whole line")
 assert_equal(views()[1].start_col, nil, "a linewise selection makes a line comment")
 assert_equal(views()[1].snippet, "one two", "a linewise selection covers the line")
 
+vim.cmd("CommentClear")
+
+vim.cmd.file(("a-very-long-name"):rep(6) .. ".md")
+vim.api.nvim_win_set_cursor(0, { 1, 4 })
+select("viw")
+vim.o.columns = 60
+vim.cmd("'<,'>Comment")
+local long_title = lines_pane_title()
+assert_equal(vim.fn.strdisplaywidth(long_title), 56, "a long title fits the window")
+assert_equal(long_title:sub(1, 4), " …", "a long title starts with an ellipsis")
+assert_equal(
+  vim.endswith(long_title, "name.md [line 1, col 5–9] "),
+  true,
+  "a long title keeps the range"
+)
+vim.cmd("q!")
+
 print("spans: ok")

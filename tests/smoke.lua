@@ -282,6 +282,40 @@ vim.api.nvim_win_set_cursor(0, { 1, 0 })
 vim.cmd("CommentNext")
 vim.cmd([[execute "normal! \<C-o>"]])
 assert_equal(cursor_line(), 1, "<C-o> returns from a comment jump")
+
+local file_win = vim.api.nvim_get_current_win()
+vim.api.nvim_win_set_cursor(0, { 2, 0 })
+vim.cmd("CommentShow")
+local function comment_title()
+  return vim.api.nvim_win_get_config(0).title[1][1]
+end
+assert_equal(comment_title(), " comment (1 of 4) ", "the preview counts the file's comments")
+local previewed = {}
+local file_lines = {}
+for _ = 1, 4 do
+  vim.cmd("CommentNext")
+  table.insert(previewed, text_of(vim.api.nvim_get_current_win()))
+  table.insert(file_lines, vim.api.nvim_win_get_cursor(file_win)[1])
+end
+assert_equal(
+  table.concat(previewed, ","),
+  "also on four,on four and five,on seven,on two",
+  ":CommentNext in a preview shows each comment in turn, then wraps"
+)
+assert_equal(table.concat(file_lines, ","), "4,4,7,2", "the cursor in the file follows the preview")
+assert_equal(#floats(), 2, "cycling keeps one preview open")
+assert_equal(comment_title(), " comment (1 of 4) ", "the count follows the preview")
+vim.cmd("CommentPrev")
+assert_equal(
+  text_of(vim.api.nvim_get_current_win()),
+  "on seven",
+  ":CommentPrev goes back in a preview"
+)
+vim.cmd("quit")
+assert_equal(#floats(), 0, "closing the preview")
+vim.api.nvim_set_current_win(file_win)
+vim.cmd("CommentNext")
+assert_equal(#floats(), 0, "without a preview, :CommentNext only moves the cursor")
 vim.cmd("CommentClear")
 
 vim.cmd.edit("LICENSE")

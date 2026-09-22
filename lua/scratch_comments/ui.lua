@@ -32,6 +32,18 @@ function M.summary(text)
   return vim.split(text, "\n")[1]
 end
 
+-- Cuts from the left so the line range and the file extension stay visible.
+---@param text string
+---@param width integer
+---@return string
+local function fit(text, width)
+  local start = 0
+  while vim.fn.strdisplaywidth(vim.fn.strcharpart(text, start)) > width do
+    start = start + 1
+  end
+  return start == 0 and text or "…" .. vim.fn.strcharpart(text, start + 1)
+end
+
 ---@param lines string[]
 ---@param filetype string
 ---@return integer bufnr
@@ -50,8 +62,11 @@ end
 ---@field filetype string
 ---@field comment string
 ---@field on_save? fun(text: string)
+---@field on_close? fun()
+---@field comment_title? string
 
 ---@param frame ScratchFrame
+---@return integer comment_win
 function M.open_frame(frame)
   local comment_lines = vim.split(frame.comment, "\n")
   local width = math.min(80, vim.o.columns - 4)
@@ -71,7 +86,7 @@ function M.open_frame(frame)
     width = width,
     height = context_height,
     border = border,
-    title = " " .. frame.title .. " ",
+    title = " " .. fit(frame.title, width - 2) .. " ",
     title_pos = "center",
     style = "minimal",
   })
@@ -84,7 +99,7 @@ function M.open_frame(frame)
     width = width,
     height = comment_height,
     border = border,
-    title = " comment ",
+    title = " " .. (frame.comment_title or "comment") .. " ",
     title_pos = "center",
     style = "minimal",
   })
@@ -100,6 +115,9 @@ function M.open_frame(frame)
     once = true,
     callback = function()
       pcall(vim.api.nvim_win_close, context_win, true)
+      if frame.on_close then
+        frame.on_close()
+      end
     end,
   })
   vim.api.nvim_create_autocmd("WinClosed", {
@@ -113,7 +131,7 @@ function M.open_frame(frame)
 
   if not frame.on_save then
     vim.bo[comment_buf].modifiable = false
-    return
+    return comment_win
   end
 
   local function show_mode()
@@ -146,6 +164,7 @@ function M.open_frame(frame)
       vim.bo[comment_buf].modified = false
     end,
   })
+  return comment_win
 end
 
 ---@param text string

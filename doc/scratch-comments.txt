@@ -55,9 +55,14 @@ Add your own mappings. See |scratch-comments-api| for examples.
                         at the end. Comments that start on the same line are
                         one stop.
 
+                        With a |:CommentShow| window open, show the next
+                        comment in it instead, one comment at a time. The
+                        cursor in the file follows.
+
                                                                 *:CommentPrev*
 :CommentPrev            Go to the previous comment in the current file,
-                        wrapping at the start.
+                        wrapping at the start. With a |:CommentShow| window
+                        open, show the previous comment in it.
 
                                                                 *:CommentEdit*
 :CommentEdit            Edit the comment at the cursor in the same window. If

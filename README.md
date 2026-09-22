@@ -98,7 +98,8 @@ vim.keymap.set("n", "<leader>cx", "<Cmd>CommentExport<CR>", { desc = "Copy comme
 ## browsing
 
 `:CommentNext` and `:CommentPrev` move between comments in the current file,
-wrapping at the ends. `:CommentList` puts all your comments in the quickfix
+wrapping at the ends. With a `:CommentShow` window open, they show the next or
+previous comment in that window instead. `:CommentList` puts all your comments in the quickfix
 list, so `]q` and `[q` move between them across files, and any quickfix viewer
 works:
 
