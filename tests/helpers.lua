@@ -106,6 +106,7 @@ function M.reset()
   end
   vim.cmd("silent! only!")
   require("scratch_comments").clear()
+  require("scratch_comments").toggle(true)
   vim.cmd("silent! %bwipeout!")
   vim.ui.select = select
   M.offered = {}

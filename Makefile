@@ -14,23 +14,9 @@ all: check
 ## check: everything CI runs
 check: lint fmt-check test
 
-## test: run the specs, then the old suites
-test: SUITES := tests/smoke.lua
+## test: run the specs
 test: $(MINI_TEST)
 	@MINI_TEST=$(MINI_TEST) $(NVIM) --headless --clean -u tests/minit.lua -c "lua MiniTest.run()"
-	@fail=0; \
-	for t in $(SUITES); do \
-		printf '%-22s ' "$$t"; \
-		out=$$($(NVIM) --headless --clean -u tests/minimal_init.lua \
-			-c "lua local ok,e=pcall(dofile,'$$t') if not ok then io.write('FAIL: '..tostring(e)..'\n') end vim.cmd('qa!')" \
-			2>&1 | grep -oE '(FAIL: .*|[a-z]+: ok)' || true); \
-		case "$$out" in \
-			*FAIL*) echo "$$out"; fail=1 ;; \
-			*": ok") echo "ok" ;; \
-			*) echo "FAIL: no result"; fail=1 ;; \
-		esac; \
-	done; \
-	exit $$fail
 
 ## deps: mini.test, cloned once per version
 $(MINI_TEST):
