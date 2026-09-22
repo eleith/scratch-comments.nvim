@@ -1,5 +1,5 @@
-local context = require("scratch_comments.context")
 local location = require("scratch_comments.location")
+local paths = require("scratch_comments.paths")
 local render = require("scratch_comments.render")
 local state = require("scratch_comments.state")
 local store = require("scratch_comments.model.store")
@@ -166,7 +166,7 @@ function M.range(start_line, end_line, use_selection)
   end
 
   local file_path = vim.fn.fnamemodify(name, ":p")
-  local relative_path = context.relative_path(context.git_root(file_path), file_path)
+  local relative_path = paths.relative_path(paths.git_root(file_path), file_path)
   ---@type ScratchComment?
   local added
   ---@type ScratchCommentWindow

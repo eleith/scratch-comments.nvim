@@ -1,13 +1,9 @@
 local M = {}
 
-local function trim(value)
-  return (value or ""):gsub("^%s+", ""):gsub("%s+$", "")
-end
-
 local function run(args)
   local result = vim.system(args, { text = true }):wait()
   if result.code == 0 then
-    return trim(result.stdout)
+    return vim.trim(result.stdout or "")
   end
   return nil
 end
