@@ -28,6 +28,7 @@ end
 ---@return integer context_win
 ---@return integer comment_win
 ---@return integer comment_buf
+---@return integer context_buf
 function M.open(frame)
   local comment_lines = vim.split(frame.comment, "\n")
   local wanted_context = #frame.context
@@ -138,7 +139,7 @@ function M.open(frame)
     end,
   })
 
-  return context_win, comment_win, comment_buf
+  return context_win, comment_win, comment_buf, context_buf
 end
 
 return M

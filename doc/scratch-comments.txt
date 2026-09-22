@@ -40,8 +40,8 @@ Requires Neovim 0.12 or newer.
                         you are commenting on at the top, your comment below.
                         A new comment opens in insert mode, and the title
                         shows the mode you are in. Write as many lines as you
-                        like, then |:wq| to save. |:q| closes it if nothing
-                        changed, and |:q!| throws your changes away.
+                        like, then |:wq| to save. |:q| or <Esc> closes it if
+                        nothing changed, and |:q!| throws your changes away.
                         |CTRL-W_w| moves between the two parts, or scroll them
                         with the mouse.
 

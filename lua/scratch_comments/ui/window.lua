@@ -1,4 +1,5 @@
 local frame = require("scratch_comments.ui.frame")
+local notify = require("scratch_comments.ui.notify")
 
 local M = {}
 
@@ -30,7 +31,7 @@ function M.open(spec, window)
       current = nil
     end
   end
-  local _, comment_win, comment_buf = frame.open(spec)
+  local _, comment_win, comment_buf, context_buf = frame.open(spec)
   window.comment_win = comment_win
   current = window
 
@@ -47,6 +48,16 @@ function M.open(spec, window)
   end
   show_mode()
   vim.api.nvim_create_autocmd("ModeChanged", { buffer = comment_buf, callback = show_mode })
+
+  for _, buf in ipairs({ comment_buf, context_buf }) do
+    vim.keymap.set("n", "<Esc>", function()
+      if vim.bo[comment_buf].modified then
+        notify.warn("Save with :w, or discard with :q!")
+        return
+      end
+      pcall(vim.api.nvim_win_close, comment_win, true)
+    end, { buffer = buf, desc = "Close the comment window" })
+  end
 
   vim.bo[comment_buf].buftype = "acwrite"
   vim.api.nvim_buf_set_name(comment_buf, "scratch-comments://" .. comment_buf)

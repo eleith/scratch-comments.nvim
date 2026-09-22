@@ -36,8 +36,8 @@ comment on them, or just a word or phrase to comment on only that:
 a window opens in the middle of the screen, with the lines you're commenting on
 at the top and your comment below. a new comment opens in insert mode, and the
 title shows the mode you're in. write as many lines as you like, then `:wq` to
-save. `:q` closes it if you haven't changed anything, and `:q!` throws your
-changes away. `<C-w>w` moves between the two parts, or scroll them with the
+save. `:q` or `<Esc>` closes it if you haven't changed anything, and `:q!`
+throws your changes away. `<C-w>w` moves between the two parts, or scroll them with the
 mouse.
 
 commented lines get a mark in the sign column: `│` for one line, and `╭` `│` `╰`
