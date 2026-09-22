@@ -92,6 +92,7 @@ function M.open_frame(frame)
   vim.wo[comment_win].linebreak = true
   for _, win in ipairs({ context_win, comment_win }) do
     vim.wo[win].winhighlight = "NormalFloat:Normal"
+    vim.wo[win].statuscolumn = "  "
   end
 
   vim.api.nvim_create_autocmd("WinClosed", {
@@ -121,7 +122,7 @@ function M.open_frame(frame)
       local name = mode_names[mode] or "NORMAL"
       vim.api.nvim_win_set_config(
         comment_win,
-        { footer = " " .. name .. " ", footer_pos = "center" }
+        { title = " comment [" .. name .. "] ", title_pos = "center" }
       )
       vim.cmd.redraw()
     end

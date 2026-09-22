@@ -33,9 +33,9 @@ end
 local function title(file_path, start_line, end_line)
   local name = vim.fn.fnamemodify(file_path, ":t")
   if start_line == end_line then
-    return name .. " · line " .. start_line
+    return name .. " [line " .. start_line .. "]"
   end
-  return name .. " · lines " .. start_line .. "–" .. end_line
+  return name .. " [lines " .. start_line .. "–" .. end_line .. "]"
 end
 
 ---@param view ScratchCommentView

@@ -36,7 +36,7 @@ Add your own mappings. See |scratch-comments-api| for examples.
 
                         A window opens in the middle of the screen: the lines
                         you are commenting on at the top, your comment below.
-                        It opens in insert mode, and its footer shows the mode
+                        It opens in insert mode, and its title shows the mode
                         you are in. Write as many lines as you like, then
                         |:wq| to save. |:q| closes it if nothing changed, and
                         |:q!| throws your changes away. |CTRL-W_w| moves

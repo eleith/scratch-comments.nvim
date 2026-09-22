@@ -112,7 +112,7 @@ assert_equal(
 )
 assert_contains(
   vim.api.nvim_win_get_config(context_win).title[1][1],
-  "lines 1–3",
+  "README.md [lines 1–3]",
   "the frame is titled with the commented lines"
 )
 assert_equal(vim.bo.modifiable, false, ":CommentShow is read-only")
@@ -170,18 +170,22 @@ vim.cmd("CommentClear")
 
 vim.api.nvim_win_set_cursor(0, { 2, 0 })
 vim.cmd("Comment")
-local function footer()
-  return vim.api.nvim_win_get_config(0).footer[1][1]
+local function title()
+  return vim.api.nvim_win_get_config(0).title[1][1]
 end
-local footers = {}
+local titles = {}
 vim.api.nvim_create_autocmd("ModeChanged", {
   buffer = 0,
   callback = function()
-    table.insert(footers, footer())
+    table.insert(titles, title())
   end,
 })
 vim.cmd("normal! ihello")
-assert_equal(table.concat(footers, ","), " INSERT , NORMAL ", "the footer shows the current mode")
+assert_equal(
+  table.concat(titles, ","),
+  " comment [INSERT] , comment [NORMAL] ",
+  "the title shows the current mode"
+)
 vim.cmd("q!")
 assert_equal(count(), 0, "cancelling with :q! adds nothing")
 assert_equal(#floats(), 0, "cancelling closes the frame")
