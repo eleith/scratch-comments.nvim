@@ -118,11 +118,10 @@ function M.open(frame)
     vim.wo[win].statuscolumn = "  "
   end
 
+  local group = vim.api.nvim_create_augroup("scratch_comments_frame_" .. comment_win, {})
   vim.api.nvim_create_autocmd("VimResized", {
+    group = group,
     callback = function()
-      if not vim.api.nvim_win_is_valid(comment_win) then
-        return true
-      end
       backdrop.resize(dim, frame.lines)
       local context_resized, comment_resized = placement(layout())
       vim.api.nvim_win_set_config(context_win, context_resized)
@@ -136,6 +135,7 @@ function M.open(frame)
     callback = function()
       pcall(vim.api.nvim_win_close, context_win, true)
       backdrop.close(dim)
+      pcall(vim.api.nvim_del_augroup_by_id, group)
       if frame.on_close then
         frame.on_close()
       end

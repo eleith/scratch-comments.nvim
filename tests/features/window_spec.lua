@@ -116,6 +116,18 @@ describe("the comment window", function()
     expect.equality(#helpers.every_float(), 0)
   end)
 
+  it("takes its resize handler with it when it closes", function()
+    local function handlers()
+      return #vim.api.nvim_get_autocmds({ event = "VimResized" })
+    end
+    vim.cmd("quit")
+    local baseline = handlers()
+    vim.cmd("CommentShow")
+    expect.equality(handlers() > baseline, true)
+    vim.cmd("quit")
+    expect.equality(handlers(), baseline)
+  end)
+
   it("closes both panes when one closes", function()
     vim.cmd("close")
     expect.equality(#helpers.floats(), 0)
