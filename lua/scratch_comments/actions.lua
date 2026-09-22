@@ -3,8 +3,7 @@ local location = require("scratch_comments.location")
 local paths = require("scratch_comments.paths")
 local views = require("scratch_comments.model.views")
 local notify = require("scratch_comments.ui.notify")
-local preview = require("scratch_comments.ui.preview")
-local quickfix = require("scratch_comments.ui.quickfix")
+local card = require("scratch_comments.ui.card")
 local signs = require("scratch_comments.ui.signs")
 local window = require("scratch_comments.ui.window")
 
@@ -55,50 +54,10 @@ local function cursor_comments()
 end
 
 ---@param view ScratchCommentView
----@return ScratchFrame
-local function card(view)
-  local in_file = views.in_buffer(view.bufnr)
-  return {
-    title = location.title(view.file_path, view),
-    context = vim.split(view.snippet, "\n"),
-    filetype = vim.bo[view.bufnr].filetype,
-    comment = view.comment,
-    comment_title = ("comment (%d of %d)"):format(views.index_of(in_file, view.id) or 0, #in_file),
-  }
-end
-
----@param comment ScratchComment
----@return ScratchFrame
-local function orphan_card(comment)
-  return {
-    title = comment.relative_path .. " [orphaned]",
-    context = { "The lines this comment was on are gone." },
-    filetype = "",
-    comment = comment.comment,
-  }
-end
-
----@param views_in_list ScratchCommentView[]
----@param orphans ScratchComment[]
-function M.list(views_in_list, orphans)
-  local listed = vim.list_extend(vim.list_slice(views_in_list), orphans)
-  quickfix.list(views_in_list, orphans, function(index)
-    local entry = index and listed[index]
-    if not entry then
-      preview.close()
-    elseif entry.snippet then
-      preview.show(card(entry))
-    else
-      preview.show(orphan_card(entry))
-    end
-  end)
-end
-
----@param view ScratchCommentView
 ---@param source_win integer
 function M.show(view, source_win)
   window.open(
-    vim.tbl_extend("error", card(view), {
+    vim.tbl_extend("error", card.of(view), {
       on_save = function(text)
         comments.edit(view.id, text)
         notify.info("Updated comment")
