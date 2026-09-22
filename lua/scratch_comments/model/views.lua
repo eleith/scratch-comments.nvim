@@ -60,6 +60,25 @@ function M.anchored()
   return views
 end
 
+---@param bufnr integer
+---@return ScratchCommentView[]
+function M.in_buffer(bufnr)
+  return vim.tbl_filter(function(view)
+    return view.bufnr == bufnr
+  end, M.anchored())
+end
+
+---@param list ScratchCommentView[]
+---@param id? string
+---@return integer?
+function M.index_of(list, id)
+  for i, view in ipairs(list) do
+    if view.id == id then
+      return i
+    end
+  end
+end
+
 ---@return ScratchComment[]
 function M.orphans()
   return vim.tbl_filter(anchors.is_orphaned, store.all())

@@ -3,6 +3,7 @@ local comments = require("scratch_comments.comments")
 local clipboard = require("scratch_comments.export.clipboard")
 local json = require("scratch_comments.export.json")
 local markdown = require("scratch_comments.export.markdown")
+local navigate = require("scratch_comments.navigate")
 local signs = require("scratch_comments.ui.signs")
 local views = require("scratch_comments.model.views")
 local notify = require("scratch_comments.ui.notify")
@@ -24,11 +25,11 @@ function M.show()
 end
 
 function M.next()
-  annotate.jump(1)
+  navigate.jump(1)
 end
 
 function M.prev()
-  annotate.jump(-1)
+  navigate.jump(-1)
 end
 
 function M.delete()
