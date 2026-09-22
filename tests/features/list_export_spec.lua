@@ -222,6 +222,29 @@ describe("the card beside the list", function()
     expect.equality(config.height < vim.fn.win_screenpos(0)[1], true)
   end)
 
+  ---@return vim.api.keyset.win_config
+  local function card_config()
+    local panes = vim.tbl_filter(function(win)
+      return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "markdown"
+    end, helpers.floats())
+    return vim.api.nvim_win_get_config(panes[1])
+  end
+
+  it("is measured again when the editor resizes", function()
+    local columns, lines = vim.o.columns, vim.o.lines
+    vim.o.lines = 44
+    vim.cmd("CommentList")
+    local before = card_config()
+    vim.o.lines = 24
+    vim.api.nvim_exec_autocmds("VimResized", {})
+    local after = card_config()
+    -- A shorter editor leaves less room above the list, so the card moves up
+    -- instead of covering it.
+    expect.equality(after.row < before.row, true)
+    expect.equality(after.row + after.height + 1 <= vim.fn.win_screenpos(0)[1], true)
+    vim.o.columns, vim.o.lines = columns, lines
+  end)
+
   it("keeps the focus in the list", function()
     vim.cmd("CommentList")
     expect.equality(vim.bo.buftype, "quickfix")
