@@ -21,6 +21,14 @@ function M.show()
   annotate.show_current()
 end
 
+function M.next()
+  annotate.jump(1)
+end
+
+function M.prev()
+  annotate.jump(-1)
+end
+
 function M.edit()
   annotate.edit_current()
 end
@@ -126,6 +134,8 @@ function M.setup()
     M.delete,
     { desc = "Delete the comment at the cursor" }
   )
+  vim.api.nvim_create_user_command("CommentNext", M.next, { desc = "Go to the next comment" })
+  vim.api.nvim_create_user_command("CommentPrev", M.prev, { desc = "Go to the previous comment" })
   vim.api.nvim_create_user_command("CommentList", M.list, { desc = "Browse comments" })
   vim.api.nvim_create_user_command("CommentExport", function(ctx)
     M.export(ctx.fargs[1], ctx.bang)

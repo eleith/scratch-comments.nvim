@@ -253,6 +253,37 @@ end, state.anchored())
 assert_equal(table.concat(ranges, ","), "2-2,4-5", "scratch.add() defaults to the cursor line")
 vim.cmd("CommentClear")
 
+vim.cmd("2Comment")
+write("on two")
+vim.cmd("4,5Comment")
+write("on four and five")
+vim.cmd("4Comment")
+write("also on four")
+vim.cmd("7Comment")
+write("on seven")
+
+local function cursor_line()
+  return vim.api.nvim_win_get_cursor(0)[1]
+end
+local function walk(command)
+  local lines = {}
+  for _ = 1, 4 do
+    vim.cmd(command)
+    table.insert(lines, cursor_line())
+  end
+  return table.concat(lines, ",")
+end
+
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+assert_equal(walk("CommentNext"), "2,4,7,2", ":CommentNext visits each start once, then wraps")
+assert_equal(walk("CommentPrev"), "7,4,2,7", ":CommentPrev goes back, then wraps")
+
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+vim.cmd("CommentNext")
+vim.cmd([[execute "normal! \<C-o>"]])
+assert_equal(cursor_line(), 1, "<C-o> returns from a comment jump")
+vim.cmd("CommentClear")
+
 vim.cmd.edit("LICENSE")
 vim.cmd("Comment")
 write("license comment")

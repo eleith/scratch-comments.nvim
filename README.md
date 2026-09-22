@@ -71,6 +71,8 @@ it, pipe it to a command, or edit it:
 | --- | --- |
 | `:Comment` | Comment on the current line or command range |
 | `:CommentShow` | Show the comment at the cursor, with the lines it's on |
+| `:CommentNext` | Go to the next comment in the file |
+| `:CommentPrev` | Go to the previous comment in the file |
 | `:CommentEdit` | Edit the comment at the cursor |
 | `:CommentDelete` | Delete the comment at the cursor, or pick an orphaned one |
 | `:CommentList` | Put comments in the quickfix list and open it |
@@ -86,13 +88,17 @@ add your own, for example:
 vim.keymap.set("n", "<leader>ca", "<Cmd>Comment<CR>", { desc = "Comment on line" })
 vim.keymap.set("x", "<leader>ca", ":Comment<CR>", { desc = "Comment on selection" })
 vim.keymap.set("n", "<leader>cs", "<Cmd>CommentShow<CR>", { desc = "Show comments" })
+vim.keymap.set("n", "<leader>cn", "<Cmd>CommentNext<CR>", { desc = "Next comment" })
+vim.keymap.set("n", "<leader>cp", "<Cmd>CommentPrev<CR>", { desc = "Previous comment" })
 vim.keymap.set("n", "<leader>cl", "<Cmd>CommentList<CR>", { desc = "List comments" })
 vim.keymap.set("n", "<leader>cx", "<Cmd>CommentExport<CR>", { desc = "Copy comments" })
 ```
 
 ## browsing
 
-`:CommentList` puts your comments in the quickfix list, so any quickfix viewer
+`:CommentNext` and `:CommentPrev` move between comments in the current file,
+wrapping at the ends. `:CommentList` puts all your comments in the quickfix
+list, so `]q` and `[q` move between them across files, and any quickfix viewer
 works:
 
 ```vim
@@ -132,6 +138,8 @@ local scratch = require("scratch_comments")
 scratch.setup()
 scratch.add(start_line, end_line)  -- default: the cursor line
 scratch.show()
+scratch.next()
+scratch.prev()
 scratch.edit()
 scratch.delete()
 scratch.list()

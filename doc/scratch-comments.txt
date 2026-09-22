@@ -48,6 +48,15 @@ Add your own mappings. See |scratch-comments-api| for examples.
                         comment covers the line, asks which one. |:q| closes
                         it.
 
+                                                                *:CommentNext*
+:CommentNext            Go to the next comment in the current file, wrapping
+                        at the end. Comments that start on the same line are
+                        one stop.
+
+                                                                *:CommentPrev*
+:CommentPrev            Go to the previous comment in the current file,
+                        wrapping at the start.
+
                                                                 *:CommentEdit*
 :CommentEdit            Edit the comment at the cursor in the same window. If
                         more than one comment covers the line, asks which
@@ -61,6 +70,7 @@ Add your own mappings. See |scratch-comments-api| for examples.
 
                                                                 *:CommentList*
 :CommentList            Put every comment in the |quickfix| list and open it.
+                        |]q| and |[q| then move between comments across files.
                         Any quickfix front-end (trouble.nvim, nvim-bqf,
                         Snacks.picker.qflist, :Telescope quickfix) can show
                         it.
@@ -130,6 +140,8 @@ The signs use ScratchCommentSign, which links to |hl-Todo|. To change it: >lua
     scratch.setup()
     scratch.add(start_line, end_line)  -- default: the cursor line
     scratch.show()
+    scratch.next()
+    scratch.prev()
     scratch.edit()
     scratch.delete()
     scratch.list()

@@ -145,6 +145,46 @@ function M.show_current()
   end)
 end
 
+---@param direction 1|-1
+function M.jump(direction)
+  local bufnr = vim.api.nvim_get_current_buf()
+  local line = vim.api.nvim_win_get_cursor(0)[1]
+  local starts = {}
+  for _, view in ipairs(state.anchored()) do
+    if view.bufnr == bufnr then
+      starts[view.start_line] = true
+    end
+  end
+  local lines = vim.tbl_keys(starts)
+  if #lines == 0 then
+    ui.notify("No comments in this buffer", "info")
+    return
+  end
+  table.sort(lines)
+
+  local target
+  if direction == 1 then
+    for _, start_line in ipairs(lines) do
+      if start_line > line then
+        target = start_line
+        break
+      end
+    end
+    target = target or lines[1]
+  else
+    for i = #lines, 1, -1 do
+      if lines[i] < line then
+        target = lines[i]
+        break
+      end
+    end
+    target = target or lines[#lines]
+  end
+
+  vim.cmd("normal! m'")
+  vim.api.nvim_win_set_cursor(0, { target, 0 })
+end
+
 function M.edit_current()
   local views = cursor_comments()
   if #views == 0 then
