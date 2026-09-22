@@ -1,6 +1,8 @@
 local card = require("scratch_comments.ui.card")
 local preview = require("scratch_comments.ui.preview")
+local notify = require("scratch_comments.ui.notify")
 local quickfix = require("scratch_comments.ui.quickfix")
+local window = require("scratch_comments.ui.window")
 local views = require("scratch_comments.model.views")
 
 local M = {}
@@ -39,6 +41,10 @@ end
 -- in a card above it.
 ---@param filter? string only comments matching this
 function M.open(filter)
+  if not window.close() then
+    notify.warn("Save or discard the comment first")
+    return
+  end
   local anchored, orphans = views.anchored(), views.orphans()
   if filter and filter ~= "" then
     anchored, orphans = matching(anchored, filter), matching(orphans, filter)

@@ -1,5 +1,6 @@
 local frame = require("scratch_comments.ui.frame")
 local notify = require("scratch_comments.ui.notify")
+local preview = require("scratch_comments.ui.preview")
 
 local M = {}
 
@@ -26,6 +27,7 @@ local current
 ---@param spec ScratchFrame
 ---@param window ScratchCommentWindow
 function M.open(spec, window)
+  preview.close()
   spec.on_close = function()
     if current and current.comment_win == window.comment_win then
       current = nil
@@ -76,6 +78,20 @@ function M.open(spec, window)
       vim.bo[comment_buf].modified = false
     end,
   })
+end
+
+-- Closes the open comment window, unless it has unsaved changes.
+---@return boolean closed
+function M.close()
+  local open = M.current()
+  if not open then
+    return true
+  end
+  if vim.bo[vim.api.nvim_win_get_buf(open.comment_win)].modified then
+    return false
+  end
+  pcall(vim.api.nvim_win_close, open.comment_win, true)
+  return true
 end
 
 ---@return ScratchCommentWindow? window the open comment window, if any

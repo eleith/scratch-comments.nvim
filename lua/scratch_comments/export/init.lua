@@ -3,6 +3,7 @@ local json = require("scratch_comments.export.json")
 local markdown = require("scratch_comments.export.markdown")
 local notify = require("scratch_comments.ui.notify")
 local views = require("scratch_comments.model.views")
+local window = require("scratch_comments.ui.window")
 
 local M = {}
 
@@ -50,6 +51,10 @@ function M.export(format, in_buffer)
 
   local text = render_format(anchored, orphans)
   if in_buffer then
+    if not window.close() then
+      notify.warn("Save or discard the comment first")
+      return
+    end
     open_scratch(text, format)
     return
   end
