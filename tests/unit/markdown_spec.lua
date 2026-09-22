@@ -44,7 +44,7 @@ describe("markdown", function()
         "local x = 1",
         "```",
         "",
-        "- lines 5-6 (comment-2)",
+        "- lines 5–6 (comment-2)",
         "",
         "two",
         "",
@@ -65,6 +65,11 @@ describe("markdown", function()
         "",
       })
     )
+  end)
+
+  it("names a span's columns", function()
+    local rendered = markdown.render({ view({ start_col = 6, end_col = 11 }) }, {})
+    expect.no_equality(rendered:find("- line 3, col 7–11 (comment-1)", 1, true), nil)
   end)
 
   it("fences a snippet that contains a fence with four backticks", function()

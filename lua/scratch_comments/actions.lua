@@ -135,9 +135,7 @@ end
 ---@param view ScratchCommentView
 ---@return string
 local function describe(view)
-  local lines = view.start_line == view.end_line and tostring(view.start_line)
-    or (view.start_line .. "-" .. view.end_line)
-  return "lines " .. lines .. ": " .. summary(view.comment)
+  return location.describe(view) .. ": " .. summary(view.comment)
 end
 
 ---@param candidates ScratchCommentView[]

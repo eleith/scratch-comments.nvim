@@ -79,6 +79,13 @@ describe("a span", function()
     expect.equality(current().snippet, "quick")
   end)
 
+  it("is listed in quickfix with its columns", function()
+    vim.cmd("CommentList")
+    local item = vim.fn.getqflist()[1]
+    expect.equality({ item.col, item.end_col }, { 5, 10 })
+    vim.cmd("cclose")
+  end)
+
   it("exports 1-based columns to json, ending on the last byte", function()
     local exported = vim.json.decode(scratch.render("json")).comments[1]
     expect.equality(exported.start_col, 5)

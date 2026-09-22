@@ -82,14 +82,18 @@ local select = vim.ui.select
 ---@type any[] the items the last vim.ui.select offered
 M.offered = {}
 
+---@type string[] how the last vim.ui.select showed its items
+M.labels = {}
+
 -- Answers each vim.ui.select with the next index given, then with 1. An index
 -- past the items (such as 0) cancels.
 ---@param ... integer
 function M.pick(...)
   local choices = { ... }
   ---@diagnostic disable-next-line: duplicate-set-field -- test fake
-  vim.ui.select = function(items, _, callback)
+  vim.ui.select = function(items, opts, callback)
     M.offered = items
+    M.labels = vim.tbl_map(opts.format_item or tostring, items)
     callback(items[table.remove(choices, 1) or 1])
   end
 end
@@ -118,6 +122,7 @@ function M.reset()
   vim.cmd("silent! %bwipeout!")
   vim.ui.select = select
   M.offered = {}
+  M.labels = {}
   vim.wait(0)
   M.notifications = {}
 end

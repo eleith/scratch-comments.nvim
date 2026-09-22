@@ -107,7 +107,7 @@ describe("markdown", function()
   it("names a range's lines", function()
     vim.cmd("1,2Comment")
     helpers.write("on a and b")
-    expect.no_equality(scratch.render():find("lines 1-2", 1, true), nil)
+    expect.no_equality(scratch.render():find("lines 1–2", 1, true), nil)
   end)
 end)
 

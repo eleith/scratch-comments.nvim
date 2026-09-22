@@ -23,6 +23,8 @@ function M.list(views, orphans)
       filename = comment.file_path,
       lnum = comment.start_line,
       end_lnum = comment.end_line,
+      col = comment.start_col and comment.start_col + 1,
+      end_col = comment.end_col and comment.end_col + 1,
       text = summary(comment.comment),
     }
   end, views)

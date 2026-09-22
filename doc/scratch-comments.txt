@@ -100,7 +100,7 @@ selected within them.
 
 - Commenting on the same lines again edits that comment.
 - Commenting on different lines adds a new comment, even if the lines overlap
-  another comment. A comment on lines 10-30 and one on line 14 are separate.
+  another comment. A comment on lines 10–30 and one on line 14 are separate.
 
 ==============================================================================
 4. RETENTION                                     *scratch-comments-retention*

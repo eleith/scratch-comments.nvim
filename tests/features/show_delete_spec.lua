@@ -21,6 +21,12 @@ describe(":CommentShow", function()
     expect.equality(helpers.text(), "on one to three")
   end)
 
+  it("names each comment by its location and first line", function()
+    helpers.pick(0)
+    vim.cmd("CommentShow")
+    expect.equality(helpers.labels, { "line 1: on one", "lines 1–3: on one to three" })
+  end)
+
   it("saves edits to the comment it shows", function()
     helpers.pick(2)
     vim.cmd("CommentShow")
