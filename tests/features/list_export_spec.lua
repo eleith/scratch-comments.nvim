@@ -111,6 +111,42 @@ describe("markdown", function()
   end)
 end)
 
+describe("the card beside the list", function()
+  ---@return string
+  local function card()
+    local panes = vim.tbl_filter(function(win)
+      return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "markdown"
+    end, helpers.floats())
+    return panes[1] and helpers.text(vim.api.nvim_win_get_buf(panes[1])) or ""
+  end
+
+  ---@param line integer
+  local function move_to(line)
+    vim.api.nvim_win_set_cursor(0, { line, 0 })
+    vim.api.nvim_exec_autocmds("CursorMoved", { buffer = vim.api.nvim_get_current_buf() })
+  end
+
+  it("shows the comment the cursor is on, and follows it", function()
+    vim.cmd("CommentList")
+    expect.equality(card(), "on a")
+    move_to(2)
+    expect.equality(card(), "on c")
+    move_to(1)
+    expect.equality(card(), "on a")
+  end)
+
+  it("keeps the focus in the list", function()
+    vim.cmd("CommentList")
+    expect.equality(vim.bo.buftype, "quickfix")
+  end)
+
+  it("goes away with the list", function()
+    vim.cmd("CommentList")
+    vim.api.nvim_exec_autocmds("BufLeave", { buffer = vim.api.nvim_get_current_buf() })
+    expect.equality(#helpers.every_float(), 0)
+  end)
+end)
+
 describe("comments in several files", function()
   before_each(function()
     helpers.buffer("a-first.md", { "a" })

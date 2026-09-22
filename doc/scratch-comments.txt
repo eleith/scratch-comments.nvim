@@ -77,6 +77,10 @@ Requires Neovim 0.12 or newer.
 :CommentList            Put every comment in the |quickfix| list and open it.
                         |]q| and |[q| then move between comments across files.
                         For a comment on selected text, they land on the text.
+
+                        While the list is open, the comment the cursor is on
+                        is shown in a card above it, with the lines it is on.
+                        The card goes away with the list.
                         Any quickfix front-end (trouble.nvim, nvim-bqf,
                         Snacks.picker.qflist, :Telescope quickfix) can show
                         it.

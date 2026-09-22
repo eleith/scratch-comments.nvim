@@ -98,7 +98,8 @@ wrapping at the ends. with a comment open, they show the next or previous
 comment in that window instead. save or discard your changes first.
 
 `:CommentList` puts all your comments in the quickfix list, so `]q` and `[q`
-move between them across files, and any quickfix viewer works:
+move between them across files. while the list is open, the comment under the
+cursor is shown in a card above it. any quickfix viewer works:
 
 ```vim
 :copen                       " built in, no plugins

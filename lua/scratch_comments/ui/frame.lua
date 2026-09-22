@@ -20,9 +20,12 @@ end
 ---@field context string[]
 ---@field filetype string
 ---@field comment string
----@field on_save fun(text: string)
+---@field on_save? fun(text: string)
 ---@field comment_title? string
 ---@field on_close? fun()
+---@field enter? boolean focus the comment pane (default: true)
+---@field backdrop? boolean dim the editor behind it (default: true)
+---@field lines? integer rows to fit in, from the top (default: the editor's)
 
 -- Two stacked floats, centered: the commented lines above, the comment below.
 ---@param frame ScratchFrame
@@ -37,20 +40,21 @@ function M.open(frame)
 
   ---@return { width: integer, col: integer, row: integer, context: integer, comment: integer }
   local function layout()
+    local lines = frame.lines or vim.o.lines
     local width = math.min(80, vim.o.columns - 4)
-    local context = math.min(wanted_context, math.floor(vim.o.lines * 0.4))
-    local comment = math.min(wanted_comment, math.floor(vim.o.lines * 0.3))
+    local context = math.min(wanted_context, math.floor(lines * 0.4))
+    local comment = math.min(wanted_comment, math.floor(lines * 0.3))
     return {
       width = width,
       col = math.floor((vim.o.columns - width) / 2),
       -- Each pane has a top and a bottom border line.
-      row = math.floor((vim.o.lines - context - comment - 4) / 2),
+      row = math.floor((lines - context - comment - 4) / 2),
       context = context,
       comment = comment,
     }
   end
 
-  local dim = backdrop.open()
+  local dim = frame.backdrop ~= false and backdrop.open() or nil
   local place = layout()
   local border = (vim.o.winborder == "" or vim.o.winborder == "none") and "rounded" or nil
 
@@ -69,7 +73,7 @@ function M.open(frame)
   })
 
   local comment_buf = frame_buffer(comment_lines, "markdown")
-  local comment_win = vim.api.nvim_open_win(comment_buf, true, {
+  local comment_win = vim.api.nvim_open_win(comment_buf, frame.enter ~= false, {
     relative = "editor",
     row = place.row + place.context + 2,
     col = place.col,

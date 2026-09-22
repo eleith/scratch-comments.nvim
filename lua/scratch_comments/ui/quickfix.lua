@@ -10,9 +10,45 @@ end
 
 -- Quickfix rather than a picker: any quickfix front-end (Trouble, Snacks,
 -- Telescope, nvim-bqf) can display it.
+-- Reports the entry the cursor is on, and nil once the list is gone.
+---@param on_entry? fun(index: integer?)
+local function follow(on_entry)
+  if not on_entry then
+    return
+  end
+  local group = vim.api.nvim_create_augroup("scratch_comments_quickfix", { clear = true })
+  local bufnr = vim.api.nvim_get_current_buf()
+  vim.api.nvim_create_autocmd({ "CursorMoved", "BufEnter" }, {
+    group = group,
+    buffer = bufnr,
+    callback = function()
+      on_entry(vim.api.nvim_win_get_cursor(0)[1])
+    end,
+  })
+  for _, event in ipairs({ "BufLeave", "BufWipeout" }) do
+    vim.api.nvim_create_autocmd(event, {
+      group = group,
+      buffer = bufnr,
+      callback = function()
+        on_entry(nil)
+      end,
+    })
+  end
+  vim.api.nvim_create_autocmd("WinClosed", {
+    group = group,
+    pattern = tostring(vim.api.nvim_get_current_win()),
+    once = true,
+    callback = function()
+      on_entry(nil)
+    end,
+  })
+  on_entry(vim.api.nvim_win_get_cursor(0)[1])
+end
+
 ---@param views ScratchCommentView[]
 ---@param orphans ScratchComment[]
-function M.list(views, orphans)
+---@param on_entry? fun(index: integer?) called with the entry the cursor is on
+function M.list(views, orphans, on_entry)
   if #views + #orphans == 0 then
     notify.info("No comments")
     return
@@ -37,6 +73,7 @@ function M.list(views, orphans)
 
   vim.fn.setqflist({}, " ", { title = "Comments", items = entries })
   vim.cmd.copen()
+  follow(on_entry)
 end
 
 return M

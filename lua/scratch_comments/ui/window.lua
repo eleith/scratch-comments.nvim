@@ -69,7 +69,7 @@ function M.open(spec, window)
     callback = function()
       local lines = vim.api.nvim_buf_get_lines(comment_buf, 0, -1, false)
       local text = vim.trim(table.concat(lines, "\n"))
-      if text ~= "" then
+      if text ~= "" and spec.on_save then
         spec.on_save(text)
       end
       vim.bo[comment_buf].modified = false

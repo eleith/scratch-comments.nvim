@@ -1,7 +1,6 @@
 local actions = require("scratch_comments.actions")
 local export = require("scratch_comments.export")
 local navigate = require("scratch_comments.navigate")
-local quickfix = require("scratch_comments.ui.quickfix")
 local views = require("scratch_comments.model.views")
 
 local M = {}
@@ -29,7 +28,7 @@ function M.prev()
 end
 
 function M.list()
-  quickfix.list(views.anchored(), views.orphans())
+  actions.list(views.anchored(), views.orphans())
 end
 
 -- Kept so configs that call it keep working; the commands need no setup.
