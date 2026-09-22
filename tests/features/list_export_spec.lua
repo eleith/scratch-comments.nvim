@@ -1,4 +1,4 @@
-local clipboard = require("scratch_comments.export")
+local clipboard = require("scratch_comments.export.clipboard")
 local helpers = require("helpers")
 local scratch = require("scratch_comments")
 local expect = MiniTest.expect
