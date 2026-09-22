@@ -83,7 +83,17 @@ local function open_frame(frame)
   vim.wo[comment_win].wrap = true
   vim.wo[comment_win].linebreak = true
   for _, win in ipairs({ context_win, comment_win }) do
-    vim.wo[win].winhighlight = "NormalFloat:Normal,LineNr:Normal"
+    -- The padding column draws in one of these, depending on the window's
+    -- options, so all of them follow the window's background.
+    vim.wo[win].winhighlight = table.concat({
+      "NormalFloat:Normal",
+      "LineNr:Normal",
+      "LineNrAbove:Normal",
+      "LineNrBelow:Normal",
+      "CursorLineNr:Normal",
+      "SignColumn:Normal",
+      "FoldColumn:Normal",
+    }, ",")
     vim.wo[win].statuscolumn = "  "
   end
 

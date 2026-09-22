@@ -52,7 +52,15 @@ describe("the comment window", function()
   end)
 
   it("uses the editor background, padding included", function()
-    expect.equality(vim.wo[(helpers.panes())].winhighlight, "NormalFloat:Normal,LineNr:Normal")
+    local lines_win, comment_win = helpers.panes()
+    for _, win in ipairs({ lines_win, comment_win }) do
+      local groups = vim.split(vim.wo[win].winhighlight, ",")
+      expect.equality(groups[1], "NormalFloat:Normal")
+      for _, group in ipairs(groups) do
+        expect.equality(vim.endswith(group, ":Normal"), true)
+      end
+      expect.equality(#groups, 7)
+    end
   end)
 
   it("closes both panes when one closes", function()
