@@ -106,7 +106,7 @@ function M.open_frame(frame)
   vim.wo[comment_win].wrap = true
   vim.wo[comment_win].linebreak = true
   for _, win in ipairs({ context_win, comment_win }) do
-    vim.wo[win].winhighlight = "NormalFloat:Normal"
+    vim.wo[win].winhighlight = "NormalFloat:Normal,LineNr:Normal"
     vim.wo[win].statuscolumn = "  "
   end
 
