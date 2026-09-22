@@ -1,7 +1,8 @@
+local anchors = require("scratch_comments.model.anchors")
 local location = require("scratch_comments.location")
 local paths = require("scratch_comments.paths")
-local render = require("scratch_comments.render")
 local state = require("scratch_comments.state")
+local signs = require("scratch_comments.ui.signs")
 local store = require("scratch_comments.model.store")
 local ui = require("scratch_comments.ui")
 
@@ -197,8 +198,8 @@ function M.range(start_line, end_line, use_selection)
         charwise = start_col ~= nil,
       })
       window.id = added.id
-      render.anchor(added, start_line, end_line, start_col, end_col)
-      render.draw_signs(bufnr, store.in_buffer(bufnr))
+      anchors.anchor(added, start_line, end_line, start_col, end_col)
+      signs.draw(bufnr, store.in_buffer(bufnr))
       ui.notify("Added comment", "info")
     end,
   }, window)
@@ -228,10 +229,10 @@ end
 
 ---@param comment ScratchComment
 local function delete(comment)
-  render.clear_all(store.remove(function(candidate)
+  anchors.clear_all(store.remove(function(candidate)
     return candidate.id == comment.id
   end))
-  render.draw_signs(comment.bufnr, store.in_buffer(comment.bufnr))
+  signs.draw(comment.bufnr, store.in_buffer(comment.bufnr))
   ui.notify("Deleted comment", "info")
 end
 
@@ -300,7 +301,7 @@ function M.delete_current()
   end
 
   local bufnr = vim.api.nvim_get_current_buf()
-  local orphans = vim.tbl_filter(render.is_orphaned, store.in_buffer(bufnr))
+  local orphans = vim.tbl_filter(anchors.is_orphaned, store.in_buffer(bufnr))
   if #orphans == 0 then
     ui.notify("No comment at cursor", "info")
     return

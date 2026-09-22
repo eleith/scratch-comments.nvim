@@ -1,8 +1,9 @@
+local anchors = require("scratch_comments.model.anchors")
 local annotate = require("scratch_comments.annotate")
 local clipboard = require("scratch_comments.export.clipboard")
 local json = require("scratch_comments.export.json")
 local markdown = require("scratch_comments.export.markdown")
-local render = require("scratch_comments.render")
+local signs = require("scratch_comments.ui.signs")
 local state = require("scratch_comments.state")
 local store = require("scratch_comments.model.store")
 local ui = require("scratch_comments.ui")
@@ -87,15 +88,15 @@ end
 
 ---@param bufnr integer
 local function redraw(bufnr)
-  render.draw_signs(bufnr, store.in_buffer(bufnr))
+  signs.draw(bufnr, store.in_buffer(bufnr))
 end
 
 ---@param on? boolean
 function M.toggle(on)
   if on == nil then
-    on = not render.is_visible()
+    on = not signs.is_visible()
   end
-  render.set_visible(on)
+  signs.set_visible(on)
   for _, bufnr in ipairs(commented_buffers()) do
     redraw(bufnr)
   end
@@ -103,14 +104,15 @@ end
 
 function M.clear()
   for _, bufnr in ipairs(commented_buffers()) do
-    render.clear_buffer(bufnr)
+    anchors.clear_buffer(bufnr)
+    signs.clear_buffer(bufnr)
   end
   store.clear()
   ui.notify("Cleared comments", "info")
 end
 
 function M.setup()
-  render.setup()
+  signs.setup()
 
   vim.api.nvim_create_user_command("Comment", function(ctx)
     annotate.range(ctx.line1, ctx.line2, ctx.range == 2)
@@ -171,7 +173,8 @@ function M.setup()
   vim.api.nvim_create_autocmd("BufDelete", {
     group = group,
     callback = function(args)
-      render.clear_buffer(args.buf)
+      anchors.clear_buffer(args.buf)
+      signs.clear_buffer(args.buf)
       store.remove(function(comment)
         return comment.bufnr == args.buf
       end)

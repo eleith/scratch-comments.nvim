@@ -1,4 +1,4 @@
-local render = require("scratch_comments.render")
+local anchors = require("scratch_comments.model.anchors")
 local store = require("scratch_comments.model.store")
 
 local M = {}
@@ -46,7 +46,7 @@ end
 function M.anchored()
   local views = {}
   for _, comment in ipairs(store.all()) do
-    local start_line, end_line, start_col, end_col = render.range(comment)
+    local start_line, end_line, start_col, end_col = anchors.range(comment)
     if start_line and end_line then
       local view = vim.deepcopy(comment) --[[@as ScratchCommentView]]
       view.start_line, view.end_line = start_line, end_line
@@ -62,7 +62,7 @@ end
 
 ---@return ScratchComment[]
 function M.orphans()
-  return vim.tbl_filter(render.is_orphaned, store.all())
+  return vim.tbl_filter(anchors.is_orphaned, store.all())
 end
 
 ---@param predicate fun(comment: ScratchCommentView): boolean
