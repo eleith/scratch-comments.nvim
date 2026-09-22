@@ -84,16 +84,4 @@ function M.orphans()
   return vim.tbl_filter(anchors.is_orphaned, store.all())
 end
 
----@param predicate fun(comment: ScratchCommentView): boolean
----@return ScratchCommentView[]
-function M.find_all(predicate)
-  return vim.tbl_filter(predicate, M.anchored())
-end
-
----@param predicate fun(comment: ScratchCommentView): boolean
----@return ScratchCommentView?
-function M.find(predicate)
-  return M.find_all(predicate)[1]
-end
-
 return M

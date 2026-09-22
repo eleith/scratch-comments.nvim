@@ -21,12 +21,11 @@ end
 ---@param end_col? integer
 ---@return ScratchCommentView?
 local function find_anchor(bufnr, start_line, end_line, start_col, end_col)
-  return views.find(function(comment)
-    return comment.bufnr == bufnr
-      and comment.start_line == start_line
-      and comment.end_line == end_line
-      and comment.start_col == start_col
-      and comment.end_col == end_col
+  return vim.iter(views.in_buffer(bufnr)):find(function(view)
+    return view.start_line == start_line
+      and view.end_line == end_line
+      and view.start_col == start_col
+      and view.end_col == end_col
   end)
 end
 
@@ -47,11 +46,10 @@ end
 
 ---@return ScratchCommentView[]
 local function cursor_comments()
-  local bufnr = vim.api.nvim_get_current_buf()
   local line = vim.api.nvim_win_get_cursor(0)[1]
-  return views.find_all(function(comment)
-    return comment.bufnr == bufnr and comment.start_line <= line and line <= comment.end_line
-  end)
+  return vim.tbl_filter(function(view)
+    return view.start_line <= line and line <= view.end_line
+  end, views.in_buffer(vim.api.nvim_get_current_buf()))
 end
 
 ---@param view ScratchCommentView

@@ -18,14 +18,14 @@ local function line_range(comment)
   return "lines " .. comment.start_line .. "-" .. comment.end_line
 end
 
----@param items ScratchCommentView[]
+---@param views ScratchCommentView[]
 ---@param orphans ScratchComment[]
 ---@return string
-function M.render(items, orphans)
+function M.render(views, orphans)
   local lines = { "Comments:", "" }
 
   local current_file = nil
-  for _, comment in ipairs(items) do
+  for _, comment in ipairs(views) do
     local file = comment.relative_path
     if file ~= current_file then
       current_file = file

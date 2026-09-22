@@ -10,12 +10,12 @@ function M.redraw(bufnr)
 end
 
 ---@return integer[]
-function M.buffers()
-  local buffers = {}
+local function commented_buffers()
+  local seen = {}
   for _, comment in ipairs(store.all()) do
-    buffers[comment.bufnr] = true
+    seen[comment.bufnr] = true
   end
-  return vim.tbl_keys(buffers)
+  return vim.tbl_keys(seen)
 end
 
 ---@param fields { bufnr: integer, comment: string, file_path: string, relative_path: string }
@@ -55,7 +55,7 @@ function M.delete(comment)
 end
 
 function M.clear()
-  for _, bufnr in ipairs(M.buffers()) do
+  for _, bufnr in ipairs(commented_buffers()) do
     anchors.clear_buffer(bufnr)
     signs.clear_buffer(bufnr)
   end
@@ -74,7 +74,7 @@ end
 ---@param on boolean
 function M.show_signs(on)
   signs.set_visible(on)
-  for _, bufnr in ipairs(M.buffers()) do
+  for _, bufnr in ipairs(commented_buffers()) do
     M.redraw(bufnr)
   end
 end

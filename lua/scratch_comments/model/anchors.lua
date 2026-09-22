@@ -64,7 +64,7 @@ function M.is_orphaned(comment)
 end
 
 ---@param comment ScratchComment
-function M.clear(comment)
+local function clear(comment)
   if
     comment
     and comment.extmark_id
@@ -75,10 +75,10 @@ function M.clear(comment)
   end
 end
 
----@param items ScratchComment[]
-function M.clear_all(items)
-  for _, comment in ipairs(items) do
-    M.clear(comment)
+---@param comments ScratchComment[]
+function M.clear_all(comments)
+  for _, comment in ipairs(comments) do
+    clear(comment)
   end
 end
 

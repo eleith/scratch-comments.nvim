@@ -10,10 +10,10 @@ end
 
 -- Quickfix rather than a picker: any quickfix front-end (Trouble, Snacks,
 -- Telescope, nvim-bqf) can display it.
----@param items ScratchCommentView[]
+---@param views ScratchCommentView[]
 ---@param orphans ScratchComment[]
-function M.list(items, orphans)
-  if #items + #orphans == 0 then
+function M.list(views, orphans)
+  if #views + #orphans == 0 then
     notify.info("No comments")
     return
   end
@@ -25,7 +25,7 @@ function M.list(items, orphans)
       end_lnum = comment.end_line,
       text = summary(comment.comment),
     }
-  end, items)
+  end, views)
   for _, comment in ipairs(orphans) do
     table.insert(
       entries,

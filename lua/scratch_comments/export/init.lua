@@ -41,14 +41,14 @@ function M.export(format, in_buffer)
     return
   end
 
-  local items, orphans = views.anchored(), views.orphans()
-  local count = #items + #orphans
+  local anchored, orphans = views.anchored(), views.orphans()
+  local count = #anchored + #orphans
   if count == 0 then
     notify.info("No comments to export")
     return
   end
 
-  local text = render_format(items, orphans)
+  local text = render_format(anchored, orphans)
   if in_buffer then
     open_scratch(text, format)
     return
