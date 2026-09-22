@@ -29,9 +29,9 @@ command("CommentPrev", function()
   scratch().prev()
 end, { desc = "Go to the previous comment" })
 
-command("CommentList", function()
-  scratch().list()
-end, { desc = "Browse comments" })
+command("CommentList", function(ctx)
+  scratch().list(ctx.args ~= "" and ctx.args or nil)
+end, { nargs = "?", desc = "Browse comments, or only those matching an argument" })
 
 command("CommentExport", function(ctx)
   scratch().export(ctx.fargs[1], ctx.bang)

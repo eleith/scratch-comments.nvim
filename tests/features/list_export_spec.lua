@@ -111,6 +111,50 @@ describe("markdown", function()
   end)
 end)
 
+describe(":CommentList with a filter", function()
+  ---@return string[]
+  local function listed()
+    return vim.tbl_map(function(item)
+      return item.text
+    end, vim.fn.getqflist())
+  end
+
+  it("keeps only the comments that match", function()
+    vim.cmd("CommentList 3")
+    expect.equality(listed(), { "on c" })
+    vim.cmd("cclose")
+  end)
+
+  it("matches the snippet and the path too", function()
+    vim.cmd("CommentList local")
+    expect.equality(#listed(), 2)
+    vim.cmd("cclose")
+    vim.cmd("CommentList fixture")
+    expect.equality(#listed(), 2)
+    vim.cmd("cclose")
+  end)
+
+  it("matches loosely, like a fuzzy finder", function()
+    vim.cmd("CommentList lc3")
+    expect.equality(listed(), { "on c" })
+    vim.cmd("cclose")
+  end)
+
+  it("keeps the list in file and line order", function()
+    helpers.buffer("a-first.md", { "alpha" })
+    vim.cmd("Comment")
+    helpers.write("also mentions local")
+    vim.cmd("CommentList local")
+    expect.equality(listed(), { "also mentions local", "on a", "on c" })
+    vim.cmd("cclose")
+  end)
+
+  it("says so when nothing matches", function()
+    vim.cmd("CommentList zzz")
+    expect.equality(helpers.notified()[#helpers.notified()], "No comments")
+  end)
+end)
+
 describe("the card beside the list", function()
   ---@return string
   local function card()

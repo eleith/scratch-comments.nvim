@@ -74,7 +74,9 @@ Requires Neovim 0.12 or newer.
                         to choose from.
 
                                                                 *:CommentList*
-:CommentList            Put every comment in the |quickfix| list and open it.
+:CommentList [filter]   Put every comment in the |quickfix| list and open it.
+                        With [filter], only the comments that fuzzy match it
+                        in their text, snippet or path (see |matchfuzzy()|).
                         |]q| and |[q| then move between comments across files.
                         For a comment on selected text, they land on the text.
 

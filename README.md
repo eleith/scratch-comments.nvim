@@ -72,7 +72,7 @@ it, pipe it to a command, or edit it:
 | `:CommentNext` | Go to the next comment in the file |
 | `:CommentPrev` | Go to the previous comment in the file |
 | `:CommentDelete` | Delete the comment at the cursor, or pick an orphaned one |
-| `:CommentList` | Put comments in the quickfix list and open it |
+| `:CommentList [filter]` | Put comments in the quickfix list and open it, fuzzy matching `filter` |
 | `:CommentExport[!] [format]` | Copy all comments to the clipboard as `markdown` (default) or `json`. `!` opens them in a scratch buffer |
 | `:CommentToggle [on\|off]` | Show or hide the comment signs |
 | `:CommentClear` | Delete every comment |
@@ -99,7 +99,14 @@ comment in that window instead. save or discard your changes first.
 
 `:CommentList` puts all your comments in the quickfix list, so `]q` and `[q`
 move between them across files. while the list is open, the comment under the
-cursor is shown in a card above it. any quickfix viewer works:
+cursor is shown in a card above it. give it an argument to list only the
+comments that fuzzy match it, in their text, snippet or path:
+
+```vim
+:CommentList typo
+```
+
+any quickfix viewer works:
 
 ```vim
 :copen                       " built in, no plugins
