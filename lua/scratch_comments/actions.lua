@@ -59,7 +59,10 @@ function M.show(view, source_win)
   window.open(
     vim.tbl_extend("error", card.of(view), {
       on_save = function(text)
-        comments.edit(view.id, text)
+        if not comments.edit(view.id, text) then
+          notify.warn("This comment is gone; nothing was saved")
+          return false
+        end
         notify.info("Updated comment")
       end,
     }),
@@ -107,7 +110,10 @@ function M.comment(start_line, end_line, use_selection)
     comment = "",
     on_save = function(text)
       if added then
-        comments.edit(added.id, text)
+        if not comments.edit(added.id, text) then
+          notify.warn("This comment is gone; nothing was saved")
+          return false
+        end
         return
       end
       if not vim.api.nvim_buf_is_valid(bufnr) then

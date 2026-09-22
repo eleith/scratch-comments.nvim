@@ -49,6 +49,22 @@ describe(":CommentShow", function()
   end)
 end)
 
+describe("a comment that is gone", function()
+  it("keeps your text and says nothing was saved", function()
+    helpers.pick(1)
+    vim.cmd("CommentShow")
+    vim.cmd("CommentClear")
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "typed after it was cleared" })
+    vim.cmd("write")
+    expect.equality(vim.bo.modified, true)
+    expect.equality(#helpers.floats(), 2)
+    expect.equality(
+      helpers.notified()[#helpers.notified()],
+      "This comment is gone; nothing was saved"
+    )
+  end)
+end)
+
 describe(":CommentDelete", function()
   it("deletes the picked comment", function()
     helpers.pick(1)

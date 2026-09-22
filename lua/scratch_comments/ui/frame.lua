@@ -20,7 +20,7 @@ end
 ---@field context string[]
 ---@field filetype string
 ---@field comment string
----@field on_save? fun(text: string)
+---@field on_save? fun(text: string): boolean? false keeps the text unsaved
 ---@field comment_title? string
 ---@field on_close? fun()
 ---@field enter? boolean focus the comment pane (default: true)

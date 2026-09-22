@@ -44,8 +44,9 @@ end
 
 ---@param id string
 ---@param text string
+---@return boolean edited false when the comment is gone
 function M.edit(id, text)
-  store.update(id, { comment = text })
+  return store.update(id, { comment = text }) ~= nil
 end
 
 ---@param comment ScratchComment
