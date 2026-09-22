@@ -34,13 +34,14 @@ comment on them, or just a word or phrase to comment on only that:
 ```
 
 a window opens in the middle of the screen, with the lines you're commenting on
-at the top and your comment below. it opens in insert mode, and its title shows
-the mode you're in. write as many lines as you like, then `:wq` to save. `:q`
-closes it if you haven't changed anything, and `:q!` throws your changes away.
-`<C-w>w` moves between the two parts, or scroll them with the mouse.
+at the top and your comment below. a new comment opens in insert mode, and the
+title shows the mode you're in. write as many lines as you like, then `:wq` to
+save. `:q` closes it if you haven't changed anything, and `:q!` throws your
+changes away. `<C-w>w` moves between the two parts, or scroll them with the
+mouse.
 
 commented lines get a mark in the sign column: `│` for one line, and `╭` `│` `╰`
-down a range. read a comment on the cursor line, in the same window:
+down a range. to read the comment on the cursor line:
 
 ```vim
 :CommentShow
@@ -93,10 +94,11 @@ vim.keymap.set("n", "<leader>cx", "<Cmd>CommentExport<CR>", { desc = "Copy comme
 ## browsing
 
 `:CommentNext` and `:CommentPrev` move between comments in the current file,
-wrapping at the ends. With a comment open, they show the next or previous
-comment in its place. save or discard your changes first. `:CommentList` puts all your comments in the quickfix
-list, so `]q` and `[q` move between them across files, and any quickfix viewer
-works:
+wrapping at the ends. with a comment open, they show the next or previous
+comment in that window instead. save or discard your changes first.
+
+`:CommentList` puts all your comments in the quickfix list, so `]q` and `[q`
+move between them across files, and any quickfix viewer works:
 
 ```vim
 :copen                       " built in, no plugins
@@ -155,6 +157,32 @@ vim.fn.writefile(vim.split(scratch.render(), "\n"), "review.md")
 - Neovim 0.12 or newer.
 - No plugin dependencies.
 - A clipboard provider. in tmux you may need `vim.g.clipboard = "osc52"`.
+
+## development
+
+```
+plugin/scratch-comments.lua   the commands
+lua/scratch_comments/
+  init.lua        the lua API
+  actions.lua     comment, show, delete, toggle, clear
+  navigate.lua    next and prev
+  comments.lua    changes comments and keeps the signs in sync
+  location.lua    "line 3", "lines 3–5", "line 3, col 5–12"
+  paths.lua       git root and relative paths
+  model/          the comments and where they are
+  ui/             the comment window, signs, quickfix, notifications
+  export/         markdown, json and the clipboard
+tests/
+  unit/           tests for single modules
+  features/       tests that run the commands
+```
+
+`mise install` gets the pinned tools. then:
+
+```sh
+make check   # lint, format check and tests, like CI
+make test    # tests only. the first run clones mini.test into deps/
+```
 
 ## credit
 

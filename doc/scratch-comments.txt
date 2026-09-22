@@ -20,7 +20,7 @@ and |:CommentShow| shows the comment on the cursor line.
 Comments live in the buffer. They go away when you close the buffer or clear
 them.
 
-The commands are there once the plugin is installed; no setup is needed.
+The commands work as soon as the plugin is installed. There is no setup.
 Add your own mappings. See |scratch-comments-api| for examples.
 
 Requires Neovim 0.12 or newer.
@@ -32,38 +32,40 @@ Requires Neovim 0.12 or newer.
 :[range]Comment         Comment on the current line, or on [range]. To comment
                         on a selection, select it and type ":Comment", which
                         gives ":'<,'>Comment". A characterwise selection
-                        (|v|) comments on just the selected text; a linewise
-                        one (|V|) on whole lines. If that exact text already
-                        has a comment, edit it.
+                        (|v|) comments on just the selected text. A linewise
+                        one (|V|) comments on whole lines. If that exact text
+                        already has a comment, edit it.
 
                         A window opens in the middle of the screen: the lines
                         you are commenting on at the top, your comment below.
-                        It opens in insert mode, and its title shows the mode
-                        you are in. Write as many lines as you like, then
-                        |:wq| to save. |:q| closes it if nothing changed, and
-                        |:q!| throws your changes away. |CTRL-W_w| moves
-                        between the two parts, or scroll them with the mouse.
+                        A new comment opens in insert mode, and the title
+                        shows the mode you are in. Write as many lines as you
+                        like, then |:wq| to save. |:q| closes it if nothing
+                        changed, and |:q!| throws your changes away.
+                        |CTRL-W_w| moves between the two parts, or scroll them
+                        with the mouse.
 
                                                                 *:CommentShow*
-:CommentShow            Show the comment at the cursor in the same window,
-                        with the lines it is on. If more than one comment
-                        covers the line, asks which one. It opens in normal
-                        mode: edit the comment and |:w| to save, or |:q| to
-                        close it.
+:CommentShow            Open the comment at the cursor, with the lines it is
+                        on, in the same window |:Comment| uses. If more than
+                        one comment covers the line, asks which one. It opens
+                        in normal mode. Edit the comment and |:w| to save, or
+                        |:q| to close it.
 
                                                                 *:CommentNext*
 :CommentNext            Go to the next comment in the current file, wrapping
                         at the end. Comments that start on the same line are
                         one stop.
 
-                        With a comment open, show the next comment in its
-                        place instead, one comment at a time. The cursor in
-                        the file follows. Save or discard your changes first.
+                        With a comment open, show the next comment in that
+                        window instead. Every comment is a stop, even on the
+                        same line, and the cursor in the file follows. Save
+                        or discard your changes first.
 
                                                                 *:CommentPrev*
 :CommentPrev            Go to the previous comment in the current file,
                         wrapping at the start. With a comment open, show the
-                        previous comment in its place.
+                        previous comment in that window instead.
 
                                                               *:CommentDelete*
 :CommentDelete          Delete the comment at the cursor. If more than one
@@ -74,6 +76,7 @@ Requires Neovim 0.12 or newer.
                                                                 *:CommentList*
 :CommentList            Put every comment in the |quickfix| list and open it.
                         |]q| and |[q| then move between comments across files.
+                        For a comment on selected text, they land on the text.
                         Any quickfix front-end (trouble.nvim, nvim-bqf,
                         Snacks.picker.qflist, :Telescope quickfix) can show
                         it.
@@ -125,7 +128,7 @@ In tmux you may need to set the clipboard to OSC 52 yourself: >lua
 
 Each commented line gets a sign: "│" for a one-line comment, and "╭", "│", "╰"
 down a range. The signs share the column with plugins like gitsigns and can
-cover their signs; |:CommentToggle| hides ours when you need to see theirs.
+cover their signs. |:CommentToggle| hides ours when you need to see theirs.
 
                                                          *ScratchCommentSign*
 The signs use ScratchCommentSign, which links to |hl-Todo|. To change it: >lua
