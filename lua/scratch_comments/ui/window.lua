@@ -1,4 +1,4 @@
-local location = require("scratch_comments.location")
+local frame = require("scratch_comments.ui.frame")
 
 local M = {}
 
@@ -22,144 +22,24 @@ local mode_names = {
 ---@type ScratchCommentWindow?
 local current
 
----@param lines string[]
----@param filetype string
----@return integer bufnr
-local function frame_buffer(lines, filetype)
-  local bufnr = vim.api.nvim_create_buf(false, true)
-  vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-  vim.bo[bufnr].modified = false
-  vim.bo[bufnr].bufhidden = "wipe"
-  vim.bo[bufnr].filetype = filetype
-  return bufnr
-end
-
----@class ScratchFrame
----@field title string
----@field context string[]
----@field filetype string
----@field comment string
----@field on_save fun(text: string)
----@field comment_title? string
-
----@param frame ScratchFrame
----@return integer comment_win
-local function open_frame(frame)
-  local comment_lines = vim.split(frame.comment, "\n")
-  local wanted_context = #frame.context
-  local wanted_comment = math.max(#comment_lines, 5)
-
-  ---@return { width: integer, col: integer, row: integer, context: integer, comment: integer }
-  local function layout()
-    local width = math.min(80, vim.o.columns - 4)
-    local context = math.min(wanted_context, math.floor(vim.o.lines * 0.4))
-    local comment = math.min(wanted_comment, math.floor(vim.o.lines * 0.3))
-    return {
-      width = width,
-      col = math.floor((vim.o.columns - width) / 2),
-      -- Each pane has a top and a bottom border line.
-      row = math.floor((vim.o.lines - context - comment - 4) / 2),
-      context = context,
-      comment = comment,
-    }
+---@param spec ScratchFrame
+---@param window ScratchCommentWindow
+function M.open(spec, window)
+  spec.on_close = function()
+    if current and current.comment_win == window.comment_win then
+      current = nil
+    end
   end
-
-  local place = layout()
-  local border = (vim.o.winborder == "" or vim.o.winborder == "none") and "rounded" or nil
-
-  local context_buf = frame_buffer(frame.context, frame.filetype)
-  vim.bo[context_buf].modifiable = false
-  local context_win = vim.api.nvim_open_win(context_buf, false, {
-    relative = "editor",
-    row = place.row,
-    col = place.col,
-    width = place.width,
-    height = place.context,
-    border = border,
-    title = " " .. location.fit(frame.title, place.width - 2) .. " ",
-    title_pos = "center",
-    style = "minimal",
-  })
-
-  local comment_buf = frame_buffer(comment_lines, "markdown")
-  local comment_win = vim.api.nvim_open_win(comment_buf, true, {
-    relative = "editor",
-    row = place.row + place.context + 2,
-    col = place.col,
-    width = place.width,
-    height = place.comment,
-    border = border,
-    title = " comment ",
-    title_pos = "center",
-    style = "minimal",
-  })
-  vim.wo[comment_win].wrap = true
-  vim.wo[comment_win].linebreak = true
-  for _, win in ipairs({ context_win, comment_win }) do
-    -- The padding column draws in one of these, depending on the window's
-    -- options, so all of them follow the window's background.
-    vim.wo[win].winhighlight = table.concat({
-      "NormalFloat:Normal",
-      "LineNr:Normal",
-      "LineNrAbove:Normal",
-      "LineNrBelow:Normal",
-      "CursorLineNr:Normal",
-      "SignColumn:Normal",
-      "FoldColumn:Normal",
-    }, ",")
-    vim.wo[win].statuscolumn = "  "
-  end
-
-  vim.api.nvim_create_autocmd("VimResized", {
-    callback = function()
-      if not vim.api.nvim_win_is_valid(comment_win) then
-        return true
-      end
-      local resized = layout()
-      vim.api.nvim_win_set_config(context_win, {
-        relative = "editor",
-        row = resized.row,
-        col = resized.col,
-        width = resized.width,
-        height = resized.context,
-        title = " " .. location.fit(frame.title, resized.width - 2) .. " ",
-        title_pos = "center",
-      })
-      vim.api.nvim_win_set_config(comment_win, {
-        relative = "editor",
-        row = resized.row + resized.context + 2,
-        col = resized.col,
-        width = resized.width,
-        height = resized.comment,
-      })
-    end,
-  })
-
-  vim.api.nvim_create_autocmd("WinClosed", {
-    pattern = tostring(comment_win),
-    once = true,
-    callback = function()
-      pcall(vim.api.nvim_win_close, context_win, true)
-      if current and current.comment_win == comment_win then
-        current = nil
-      end
-    end,
-  })
-  vim.api.nvim_create_autocmd("WinClosed", {
-    pattern = tostring(context_win),
-    once = true,
-    callback = function()
-      -- Not forced, so an unsaved comment stays open instead of being lost.
-      pcall(vim.api.nvim_win_close, comment_win, false)
-    end,
-  })
+  local _, comment_win, comment_buf = frame.open(spec)
+  window.comment_win = comment_win
+  current = window
 
   local function show_mode()
     if vim.api.nvim_win_is_valid(comment_win) then
       local mode = vim.api.nvim_get_mode().mode:sub(1, 1)
       local name = mode_names[mode] or "NORMAL"
       vim.api.nvim_win_set_config(comment_win, {
-        title = " " .. (frame.comment_title or "comment") .. " [" .. name .. "] ",
+        title = " " .. (spec.comment_title or "comment") .. " [" .. name .. "] ",
         title_pos = "center",
       })
       vim.cmd.redraw()
@@ -170,7 +50,7 @@ local function open_frame(frame)
 
   vim.bo[comment_buf].buftype = "acwrite"
   vim.api.nvim_buf_set_name(comment_buf, "scratch-comments://" .. comment_buf)
-  if frame.comment == "" then
+  if spec.comment == "" then
     vim.cmd.startinsert()
   end
   vim.api.nvim_create_autocmd("BufWriteCmd", {
@@ -179,19 +59,11 @@ local function open_frame(frame)
       local lines = vim.api.nvim_buf_get_lines(comment_buf, 0, -1, false)
       local text = vim.trim(table.concat(lines, "\n"))
       if text ~= "" then
-        frame.on_save(text)
+        spec.on_save(text)
       end
       vim.bo[comment_buf].modified = false
     end,
   })
-  return comment_win
-end
-
----@param frame ScratchFrame
----@param window ScratchCommentWindow
-function M.open(frame, window)
-  window.comment_win = open_frame(frame)
-  current = window
 end
 
 ---@return ScratchCommentWindow? window the open comment window, if any
