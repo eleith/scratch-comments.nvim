@@ -4,6 +4,8 @@ local store = require("scratch_comments.model.store")
 
 local M = {}
 
+local group = vim.api.nvim_create_augroup("scratch_comments", { clear = true })
+
 ---@param bufnr integer
 function M.redraw(bufnr)
   signs.draw(bufnr, store.in_buffer(bufnr))
@@ -78,5 +80,19 @@ function M.show_signs(on)
     M.redraw(bufnr)
   end
 end
+
+vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
+  group = group,
+  callback = function(args)
+    M.redraw(args.buf)
+  end,
+})
+
+vim.api.nvim_create_autocmd("BufDelete", {
+  group = group,
+  callback = function(args)
+    M.forget_buffer(args.buf)
+  end,
+})
 
 return M

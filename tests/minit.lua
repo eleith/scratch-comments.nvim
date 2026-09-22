@@ -4,7 +4,6 @@ vim.opt.swapfile = false
 vim.opt.showmode = false
 package.path = vim.fn.getcwd() .. "/tests/?.lua;" .. package.path
 
-require("scratch_comments").setup()
 require("mini.test").setup({
   collect = {
     find_files = function()

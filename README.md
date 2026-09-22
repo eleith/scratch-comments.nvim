@@ -8,17 +8,13 @@ to paste into an LLM or hand to a person.
 With `lazy.nvim`:
 
 ```lua
-{
-  "eleith/scratch-comments.nvim",
-  opts = {},
-}
+{ "eleith/scratch-comments.nvim" }
 ```
 
 With `vim.pack`:
 
 ```lua
 vim.pack.add({ { src = "https://git.eleith.com/eleith/scratch-comments.nvim" } })
-require("scratch_comments").setup()
 ```
 
 ## use
@@ -136,7 +132,6 @@ vim.api.nvim_set_hl(0, "ScratchCommentSign", { fg = "#2fafff", bg = "#004065" })
 ```lua
 local scratch = require("scratch_comments")
 
-scratch.setup()
 scratch.add(start_line, end_line)  -- default: the cursor line
 scratch.show()
 scratch.next()

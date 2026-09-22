@@ -20,9 +20,7 @@ and |:CommentShow| shows the comment on the cursor line.
 Comments live in the buffer. They go away when you close the buffer or clear
 them.
 
-Setup: >lua
-    require("scratch_comments").setup()
-<
+The commands are there once the plugin is installed; no setup is needed.
 Add your own mappings. See |scratch-comments-api| for examples.
 
 ==============================================================================
@@ -141,7 +139,6 @@ The signs use ScratchCommentSign, which links to |hl-Todo|. To change it: >lua
 >lua
     local scratch = require("scratch_comments")
 
-    scratch.setup()
     scratch.add(start_line, end_line)  -- default: the cursor line
     scratch.show()
     scratch.next()

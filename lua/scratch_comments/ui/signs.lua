@@ -7,9 +7,7 @@ local group = "ScratchCommentSign"
 local signs = { single = "│", first = "╭", middle = "│", last = "╰" }
 local visible = true
 
-function M.setup()
-  vim.api.nvim_set_hl(0, group, { link = "Todo", default = true })
-end
+vim.api.nvim_set_hl(0, group, { link = "Todo", default = true })
 
 ---@return boolean
 function M.is_visible()
