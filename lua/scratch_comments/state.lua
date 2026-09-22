@@ -10,9 +10,17 @@ local M = {}
 ---@field end_col? integer 0-based byte, exclusive.
 ---@field snippet string
 
+---@param id string
+---@return integer
+local function number(id)
+  return assert(tonumber(id:match("%d+$")))
+end
+
+-- Orders views by file, then lines, then the order they were added.
 ---@param a ScratchCommentView
 ---@param b ScratchCommentView
-local function by_position(a, b)
+---@return boolean
+function M.by_position(a, b)
   if a.relative_path ~= b.relative_path then
     return a.relative_path < b.relative_path
   end
@@ -22,7 +30,7 @@ local function by_position(a, b)
   if a.end_line ~= b.end_line then
     return a.end_line < b.end_line
   end
-  return a.id < b.id
+  return number(a.id) < number(b.id)
 end
 
 ---@param bufnr integer
@@ -52,7 +60,7 @@ function M.anchored()
       table.insert(views, view)
     end
   end
-  table.sort(views, by_position)
+  table.sort(views, M.by_position)
   return views
 end
 
