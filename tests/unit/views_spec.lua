@@ -1,4 +1,4 @@
-local state = require("scratch_comments.state")
+local views = require("scratch_comments.model.views")
 local expect = MiniTest.expect
 
 ---@param id string
@@ -13,14 +13,14 @@ local function view(id, relative_path, start_line)
   }
 end
 
----@param views table[]
+---@param list table[]
 ---@return string
-local function ids(views)
-  table.sort(views, state.by_position)
+local function ids(list)
+  table.sort(list, views.by_position)
   return table.concat(
     vim.tbl_map(function(v)
       return v.id
-    end, views),
+    end, list),
     ","
   )
 end

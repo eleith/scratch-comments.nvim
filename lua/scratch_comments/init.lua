@@ -1,11 +1,10 @@
-local anchors = require("scratch_comments.model.anchors")
 local annotate = require("scratch_comments.annotate")
+local comments = require("scratch_comments.comments")
 local clipboard = require("scratch_comments.export.clipboard")
 local json = require("scratch_comments.export.json")
 local markdown = require("scratch_comments.export.markdown")
 local signs = require("scratch_comments.ui.signs")
-local state = require("scratch_comments.state")
-local store = require("scratch_comments.model.store")
+local views = require("scratch_comments.model.views")
 local ui = require("scratch_comments.ui")
 
 local M = {}
@@ -36,14 +35,14 @@ function M.delete()
 end
 
 function M.list()
-  ui.list(state.anchored(), state.orphans())
+  ui.list(views.anchored(), views.orphans())
 end
 
 ---@param format? "markdown"|"json"
 ---@return string
 function M.render(format)
   local render_format = formats[format or "markdown"] or error("unknown format: " .. format)
-  return render_format(state.anchored(), state.orphans())
+  return render_format(views.anchored(), views.orphans())
 end
 
 ---@param format? string
@@ -56,7 +55,7 @@ function M.export(format, in_buffer)
     return
   end
 
-  local items, orphans = state.anchored(), state.orphans()
+  local items, orphans = views.anchored(), views.orphans()
   local count = #items + #orphans
   if count == 0 then
     ui.notify("No comments to export", "info")
@@ -77,37 +76,16 @@ function M.export(format, in_buffer)
   ui.notify("Copied " .. count .. " comment(s)", "info")
 end
 
----@return integer[]
-local function commented_buffers()
-  local buffers = {}
-  for _, comment in ipairs(store.all()) do
-    buffers[comment.bufnr] = true
-  end
-  return vim.tbl_keys(buffers)
-end
-
----@param bufnr integer
-local function redraw(bufnr)
-  signs.draw(bufnr, store.in_buffer(bufnr))
-end
-
 ---@param on? boolean
 function M.toggle(on)
   if on == nil then
     on = not signs.is_visible()
   end
-  signs.set_visible(on)
-  for _, bufnr in ipairs(commented_buffers()) do
-    redraw(bufnr)
-  end
+  comments.show_signs(on)
 end
 
 function M.clear()
-  for _, bufnr in ipairs(commented_buffers()) do
-    anchors.clear_buffer(bufnr)
-    signs.clear_buffer(bufnr)
-  end
-  store.clear()
+  comments.clear()
   ui.notify("Cleared comments", "info")
 end
 
@@ -166,18 +144,14 @@ function M.setup()
   vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
     group = group,
     callback = function(args)
-      redraw(args.buf)
+      comments.redraw(args.buf)
     end,
   })
 
   vim.api.nvim_create_autocmd("BufDelete", {
     group = group,
     callback = function(args)
-      anchors.clear_buffer(args.buf)
-      signs.clear_buffer(args.buf)
-      store.remove(function(comment)
-        return comment.bufnr == args.buf
-      end)
+      comments.forget_buffer(args.buf)
     end,
   })
 end

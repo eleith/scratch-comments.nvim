@@ -1,11 +1,11 @@
 local helpers = require("helpers")
 local scratch = require("scratch_comments")
-local state = require("scratch_comments.state")
+local views = require("scratch_comments.model.views")
 local store = require("scratch_comments.model.store")
 local expect = MiniTest.expect
 
 local function only()
-  return state.anchored()[1]
+  return views.anchored()[1]
 end
 
 before_each(function()
@@ -39,13 +39,13 @@ describe("a line comment", function()
   it("stays anchored when part of the line is edited", function()
     vim.api.nvim_win_set_cursor(0, { 3, 4 })
     vim.cmd("normal! ciwslow")
-    expect.equality(#state.anchored(), 1)
+    expect.equality(#views.anchored(), 1)
   end)
 
   it("stays anchored when the whole line is rewritten", function()
     vim.api.nvim_win_set_cursor(0, { 3, 0 })
     vim.cmd("normal! ccthe slow fox")
-    expect.equality(#state.orphans(), 0)
+    expect.equality(#views.orphans(), 0)
   end)
 end)
 
@@ -76,12 +76,12 @@ describe("a range comment", function()
   it("stays anchored when one of its lines is rewritten", function()
     vim.api.nvim_win_set_cursor(0, { 3, 0 })
     vim.cmd("normal! ccrewritten")
-    expect.equality(#state.orphans(), 0)
+    expect.equality(#views.orphans(), 0)
   end)
 
   it("shrinks when a middle line is deleted", function()
     vim.cmd("3d")
-    expect.equality(#state.orphans(), 0)
+    expect.equality(#views.orphans(), 0)
     expect.equality(only().end_line, 3)
   end)
 end)
@@ -97,8 +97,8 @@ describe("an orphan", function()
   end)
 
   it("is what a comment becomes when its lines are deleted", function()
-    expect.equality(#state.anchored(), 0)
-    expect.equality(#state.orphans(), 1)
+    expect.equality(#views.anchored(), 0)
+    expect.equality(#views.orphans(), 1)
   end)
 
   it("has no sign", function()
@@ -123,7 +123,7 @@ describe("an orphan", function()
   it("is anchored again by undo", function()
     helpers.undo_break()
     vim.cmd("silent undo")
-    expect.equality(#state.orphans(), 0)
+    expect.equality(#views.orphans(), 0)
     expect.equality(only().start_line, 3)
   end)
 
@@ -132,7 +132,7 @@ describe("an orphan", function()
     vim.api.nvim_win_set_cursor(0, { 1, 0 })
     vim.cmd("CommentDelete")
     expect.equality(#helpers.offered, 1)
-    expect.equality(#state.orphans(), 0)
+    expect.equality(#views.orphans(), 0)
   end)
 end)
 
@@ -145,7 +145,7 @@ describe("a file's comments", function()
 
   it("survive :e!", function()
     vim.cmd("edit!")
-    expect.equality(#state.anchored(), 1)
+    expect.equality(#views.anchored(), 1)
   end)
 
   it("go with :bd", function()

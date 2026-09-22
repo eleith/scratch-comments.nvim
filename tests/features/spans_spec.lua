@@ -1,6 +1,6 @@
 local helpers = require("helpers")
 local scratch = require("scratch_comments")
-local state = require("scratch_comments.state")
+local views = require("scratch_comments.model.views")
 local expect = MiniTest.expect
 
 ---@param keys string a visual selection, such as "viw"
@@ -30,7 +30,7 @@ describe("a charwise selection", function()
 
   it("makes a span over exactly the selected text", function()
     helpers.write("on quick")
-    local quick = state.anchored()[1]
+    local quick = views.anchored()[1]
     expect.equality(quick.snippet, "quick")
     expect.equality(quick.start_col, 4)
     expect.equality(quick.end_col, 9)
@@ -43,7 +43,7 @@ describe("a charwise selection", function()
     vim.cmd("1Comment")
     expect.equality(helpers.text(), "on the line")
     vim.cmd("quit")
-    expect.equality(#state.anchored(), 2)
+    expect.equality(#views.anchored(), 2)
   end)
 end)
 
@@ -55,13 +55,13 @@ describe("a span", function()
     select("viw")
     vim.cmd("'<,'>Comment")
     helpers.write("on quick")
-    quick = state.anchored()[1]
+    quick = views.anchored()[1]
   end)
 
   local function current()
     return vim.tbl_filter(function(view)
       return view.id == quick.id
-    end, state.anchored())[1]
+    end, views.anchored())[1]
   end
 
   it("follows its text", function()
@@ -73,7 +73,7 @@ describe("a span", function()
     helpers.undo_break()
     vim.api.nvim_buf_set_text(0, 0, 4, 0, 9, { "slow" })
     expect.equality(current(), nil)
-    expect.equality(#state.orphans(), 1)
+    expect.equality(#views.orphans(), 1)
     helpers.undo_break()
     vim.cmd("silent undo")
     expect.equality(current().snippet, "quick")
@@ -92,7 +92,7 @@ describe("a selection", function()
     select("v3l")
     vim.cmd("'<,'>Comment")
     helpers.write("on café")
-    expect.equality(state.anchored()[1].snippet, "café")
+    expect.equality(views.anchored()[1].snippet, "café")
   end)
 
   it("to $ ends at the end of the line", function()
@@ -100,7 +100,7 @@ describe("a selection", function()
     select("v$")
     vim.cmd("'<,'>Comment")
     helpers.write("to the end")
-    expect.equality(state.anchored()[1].snippet, "two")
+    expect.equality(views.anchored()[1].snippet, "two")
   end)
 
   it("can cross lines, titled with line:col", function()
@@ -109,7 +109,7 @@ describe("a selection", function()
     vim.cmd("'<,'>Comment")
     expect.equality(lines_title(), " spans.md [lines 3:5–4:5] ")
     helpers.write("across lines")
-    expect.equality(state.anchored()[1].snippet, "two\nthree")
+    expect.equality(views.anchored()[1].snippet, "two\nthree")
   end)
 
   it("that is linewise makes a line comment", function()
@@ -118,8 +118,8 @@ describe("a selection", function()
     vim.cmd("'<,'>Comment")
     expect.equality(lines_title(), " spans.md [line 3] ")
     helpers.write("whole line")
-    expect.equality(state.anchored()[1].start_col, nil)
-    expect.equality(state.anchored()[1].snippet, "one two")
+    expect.equality(views.anchored()[1].start_col, nil)
+    expect.equality(views.anchored()[1].snippet, "one two")
   end)
 end)
 

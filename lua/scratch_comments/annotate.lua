@@ -1,9 +1,7 @@
-local anchors = require("scratch_comments.model.anchors")
+local comments = require("scratch_comments.comments")
 local location = require("scratch_comments.location")
 local paths = require("scratch_comments.paths")
-local state = require("scratch_comments.state")
-local signs = require("scratch_comments.ui.signs")
-local store = require("scratch_comments.model.store")
+local views = require("scratch_comments.model.views")
 local ui = require("scratch_comments.ui")
 
 local M = {}
@@ -15,7 +13,7 @@ local M = {}
 ---@param end_col? integer
 ---@return ScratchCommentView?
 local function find_anchor(bufnr, start_line, end_line, start_col, end_col)
-  return state.find(function(comment)
+  return views.find(function(comment)
     return comment.bufnr == bufnr
       and comment.start_line == start_line
       and comment.end_line == end_line
@@ -43,7 +41,7 @@ end
 local function cursor_comments()
   local bufnr = vim.api.nvim_get_current_buf()
   local line = vim.api.nvim_win_get_cursor(0)[1]
-  return state.find_all(function(comment)
+  return views.find_all(function(comment)
     return comment.bufnr == bufnr and comment.start_line <= line and line <= comment.end_line
   end)
 end
@@ -77,14 +75,14 @@ end
 local function file_views(bufnr)
   return vim.tbl_filter(function(view)
     return view.bufnr == bufnr
-  end, state.anchored())
+  end, views.anchored())
 end
 
----@param views ScratchCommentView[]
+---@param in_file ScratchCommentView[]
 ---@param id? string
 ---@return integer?
-local function index_of(views, id)
-  for i, view in ipairs(views) do
+local function index_of(in_file, id)
+  for i, view in ipairs(in_file) do
     if view.id == id then
       return i
     end
@@ -94,15 +92,15 @@ end
 ---@param view ScratchCommentView
 ---@param source_win integer
 local function show(view, source_win)
-  local views = file_views(view.bufnr)
+  local in_file = file_views(view.bufnr)
   open({
     title = location.title(view.file_path, view),
     context = vim.split(view.snippet, "\n"),
     filetype = vim.bo[view.bufnr].filetype,
     comment = view.comment,
-    comment_title = ("comment (%d of %d)"):format(index_of(views, view.id) or 0, #views),
+    comment_title = ("comment (%d of %d)"):format(index_of(in_file, view.id) or 0, #in_file),
     on_save = function(text)
-      store.update(view.id, { comment = text })
+      comments.edit(view.id, text)
       ui.notify("Updated comment", "info")
     end,
   }, { id = view.id, bufnr = view.bufnr, line = view.start_line, source_win = source_win })
@@ -115,23 +113,23 @@ local function cycle(window, direction)
     ui.notify("Save or discard the comment first", "warn")
     return
   end
-  local views = file_views(window.bufnr)
-  if #views == 0 then
+  local in_file = file_views(window.bufnr)
+  if #in_file == 0 then
     return
   end
 
-  local index = index_of(views, window.id)
+  local index = index_of(in_file, window.id)
   local target
   if index then
-    target = views[(index - 1 + direction) % #views + 1]
+    target = in_file[(index - 1 + direction) % #in_file + 1]
   elseif direction == 1 then
-    target = vim.iter(views):find(function(view)
+    target = vim.iter(in_file):find(function(view)
       return view.start_line > window.line
-    end) or views[1]
+    end) or in_file[1]
   else
-    target = vim.iter(views):rev():find(function(view)
+    target = vim.iter(in_file):rev():find(function(view)
       return view.start_line < window.line
-    end) or views[#views]
+    end) or in_file[#in_file]
   end
 
   vim.api.nvim_win_close(window.comment_win, true)
@@ -179,27 +177,29 @@ function M.range(start_line, end_line, use_selection)
       start_col = start_col,
       end_col = end_col,
     }),
-    context = state.text(bufnr, start_line, end_line, start_col, end_col),
+    context = views.text(bufnr, start_line, end_line, start_col, end_col),
     filetype = vim.bo[bufnr].filetype,
     comment = "",
     on_save = function(text)
       if added then
-        store.update(added.id, { comment = text })
+        comments.edit(added.id, text)
         return
       end
       if not vim.api.nvim_buf_is_valid(bufnr) then
         return
       end
-      added = store.add({
+      added = comments.add({
         bufnr = bufnr,
         comment = text,
         file_path = file_path,
         relative_path = relative_path,
-        charwise = start_col ~= nil,
+      }, {
+        start_line = start_line,
+        end_line = end_line,
+        start_col = start_col,
+        end_col = end_col,
       })
       window.id = added.id
-      anchors.anchor(added, start_line, end_line, start_col, end_col)
-      signs.draw(bufnr, store.in_buffer(bufnr))
       ui.notify("Added comment", "info")
     end,
   }, window)
@@ -213,14 +213,14 @@ local function describe(view)
   return "lines " .. lines .. ": " .. ui.summary(view.comment)
 end
 
----@param views ScratchCommentView[]
+---@param candidates ScratchCommentView[]
 ---@param callback fun(view: ScratchCommentView)
-local function choose(views, callback)
-  if #views == 1 then
-    callback(views[1])
+local function choose(candidates, callback)
+  if #candidates == 1 then
+    callback(candidates[1])
     return
   end
-  vim.ui.select(views, { prompt = "Comment: ", format_item = describe }, function(view)
+  vim.ui.select(candidates, { prompt = "Comment: ", format_item = describe }, function(view)
     if view then
       callback(view)
     end
@@ -229,21 +229,18 @@ end
 
 ---@param comment ScratchComment
 local function delete(comment)
-  anchors.clear_all(store.remove(function(candidate)
-    return candidate.id == comment.id
-  end))
-  signs.draw(comment.bufnr, store.in_buffer(comment.bufnr))
+  comments.delete(comment)
   ui.notify("Deleted comment", "info")
 end
 
 function M.show_current()
-  local views = cursor_comments()
-  if #views == 0 then
+  local at_cursor = cursor_comments()
+  if #at_cursor == 0 then
     ui.notify("No comment at cursor", "info")
     return
   end
   local source_win = vim.api.nvim_get_current_win()
-  choose(views, function(view)
+  choose(at_cursor, function(view)
     show(view, source_win)
   end)
 end
@@ -258,7 +255,7 @@ function M.jump(direction)
   local bufnr = vim.api.nvim_get_current_buf()
   local line = vim.api.nvim_win_get_cursor(0)[1]
   local starts = {}
-  for _, view in ipairs(state.anchored()) do
+  for _, view in ipairs(views.anchored()) do
     if view.bufnr == bufnr then
       starts[view.start_line] = true
     end
@@ -294,14 +291,16 @@ function M.jump(direction)
 end
 
 function M.delete_current()
-  local views = cursor_comments()
-  if #views > 0 then
-    choose(views, delete)
+  local at_cursor = cursor_comments()
+  if #at_cursor > 0 then
+    choose(at_cursor, delete)
     return
   end
 
   local bufnr = vim.api.nvim_get_current_buf()
-  local orphans = vim.tbl_filter(anchors.is_orphaned, store.in_buffer(bufnr))
+  local orphans = vim.tbl_filter(function(comment)
+    return comment.bufnr == bufnr
+  end, views.orphans())
   if #orphans == 0 then
     ui.notify("No comment at cursor", "info")
     return

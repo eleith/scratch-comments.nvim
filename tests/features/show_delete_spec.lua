@@ -1,5 +1,5 @@
 local helpers = require("helpers")
-local state = require("scratch_comments.state")
+local views = require("scratch_comments.model.views")
 local store = require("scratch_comments.model.store")
 local expect = MiniTest.expect
 
@@ -26,7 +26,7 @@ describe(":CommentShow", function()
     vim.cmd("CommentShow")
     helpers.write("picked the range")
     expect.equality(#store.all(), 2)
-    expect.equality(state.anchored()[2].comment, "picked the range")
+    expect.equality(views.anchored()[2].comment, "picked the range")
   end)
 
   it("opens nothing when the picker is cancelled", function()
@@ -48,7 +48,7 @@ describe(":CommentDelete", function()
     helpers.pick(1)
     vim.cmd("CommentDelete")
     expect.equality(#store.all(), 1)
-    expect.equality(state.anchored()[1].comment, "on one to three")
+    expect.equality(views.anchored()[1].comment, "on one to three")
   end)
 
   it("deletes nothing when the picker is cancelled", function()
