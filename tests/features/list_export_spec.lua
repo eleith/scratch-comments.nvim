@@ -179,6 +179,17 @@ describe("the card beside the list", function()
     expect.equality(card(), "on a")
   end)
 
+  it("dims what is above it, leaving the list readable", function()
+    vim.cmd("CommentList")
+    local dim = vim.tbl_filter(function(win)
+      return vim.w[win].scratch_comments_backdrop
+    end, helpers.every_float())
+    expect.equality(#dim, 1)
+    local config = vim.api.nvim_win_get_config(dim[1])
+    expect.equality(config.height < vim.o.lines, true)
+    expect.equality(config.height < vim.fn.win_screenpos(0)[1], true)
+  end)
+
   it("keeps the focus in the list", function()
     vim.cmd("CommentList")
     expect.equality(vim.bo.buftype, "quickfix")

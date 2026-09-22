@@ -6,8 +6,9 @@ vim.api.nvim_set_hl(0, group, { bg = "#000000", default = true })
 
 -- Dims the editor behind the comment window. Blending needs true colors, so
 -- without them there is nothing to dim with.
+---@param lines? integer rows to cover, from the top (default: the editor's)
 ---@return integer? win
-function M.open()
+function M.open(lines)
   if not vim.o.termguicolors then
     return nil
   end
@@ -18,27 +19,30 @@ function M.open()
     row = 0,
     col = 0,
     width = vim.o.columns,
-    height = vim.o.lines,
+    height = lines or vim.o.lines,
     focusable = false,
     style = "minimal",
     -- Below the comment window, which opens at the default 50.
     zindex = 40,
   })
   vim.w[win].scratch_comments_backdrop = true
-  vim.wo[win].winhighlight = "NormalFloat:" .. group
+  -- Past the end of its empty buffer the window draws EndOfBuffer, which
+  -- would leave the first row a different shade from the rest.
+  vim.wo[win].winhighlight = ("NormalFloat:%s,EndOfBuffer:%s"):format(group, group)
   vim.wo[win].winblend = 60
   return win
 end
 
 ---@param win? integer
-function M.resize(win)
+---@param lines? integer
+function M.resize(win, lines)
   if win and vim.api.nvim_win_is_valid(win) then
     vim.api.nvim_win_set_config(win, {
       relative = "editor",
       row = 0,
       col = 0,
       width = vim.o.columns,
-      height = vim.o.lines,
+      height = lines or vim.o.lines,
     })
   end
 end

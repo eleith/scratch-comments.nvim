@@ -144,9 +144,9 @@ The signs use ScratchCommentSign, which links to |hl-Todo|. To change it: >lua
     })
 <
                                                      *ScratchCommentBackdrop*
-The editor dims behind the comment window, with ScratchCommentBackdrop over
-it at 'winblend' 60. It needs 'termguicolors'. For a different dim, or
-none: >lua
+The editor dims behind the comment window, and behind the card beside
+|:CommentList|, with ScratchCommentBackdrop over it at 'winblend' 60. It
+needs 'termguicolors'. For a different dim, or none: >lua
     vim.api.nvim_set_hl(0, "ScratchCommentBackdrop", { bg = "#000033" })
     vim.api.nvim_set_hl(0, "ScratchCommentBackdrop", { bg = "NONE" })
 <

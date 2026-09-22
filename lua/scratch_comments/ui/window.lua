@@ -31,7 +31,8 @@ function M.open(spec, window)
       current = nil
     end
   end
-  local _, comment_win, comment_buf, context_buf = frame.open(spec)
+  local panes = frame.open(spec)
+  local comment_win, comment_buf = panes.comment_win, panes.comment_buf
   window.comment_win = comment_win
   current = window
 
@@ -49,7 +50,7 @@ function M.open(spec, window)
   show_mode()
   vim.api.nvim_create_autocmd("ModeChanged", { buffer = comment_buf, callback = show_mode })
 
-  for _, buf in ipairs({ comment_buf, context_buf }) do
+  for _, buf in ipairs({ comment_buf, panes.context_buf }) do
     vim.keymap.set("n", "<Esc>", function()
       if vim.bo[comment_buf].modified then
         notify.warn("Save with :w, or discard with :q!")

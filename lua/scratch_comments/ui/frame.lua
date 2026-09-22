@@ -27,12 +27,16 @@ end
 ---@field backdrop? boolean dim the editor behind it (default: true)
 ---@field lines? integer rows to fit in, from the top (default: the editor's)
 
+---@class ScratchFramePanes
+---@field context_win integer
+---@field context_buf integer
+---@field comment_win integer
+---@field comment_buf integer
+---@field backdrop_win? integer
+
 -- Two stacked floats, centered: the commented lines above, the comment below.
 ---@param frame ScratchFrame
----@return integer context_win
----@return integer comment_win
----@return integer comment_buf
----@return integer context_buf
+---@return ScratchFramePanes
 function M.open(frame)
   local comment_lines = vim.split(frame.comment, "\n")
   local wanted_context = #frame.context
@@ -54,7 +58,7 @@ function M.open(frame)
     }
   end
 
-  local dim = frame.backdrop ~= false and backdrop.open() or nil
+  local dim = frame.backdrop ~= false and backdrop.open(frame.lines) or nil
   local place = layout()
   local border = (vim.o.winborder == "" or vim.o.winborder == "none") and "rounded" or nil
 
@@ -107,7 +111,7 @@ function M.open(frame)
         return true
       end
       local resized = layout()
-      backdrop.resize(dim)
+      backdrop.resize(dim, frame.lines)
       vim.api.nvim_win_set_config(context_win, {
         relative = "editor",
         row = resized.row,
@@ -147,7 +151,13 @@ function M.open(frame)
     end,
   })
 
-  return context_win, comment_win, comment_buf, context_buf
+  return {
+    context_win = context_win,
+    context_buf = context_buf,
+    comment_win = comment_win,
+    comment_buf = comment_buf,
+    backdrop_win = dim,
+  }
 end
 
 return M

@@ -137,7 +137,8 @@ to change it:
 vim.api.nvim_set_hl(0, "ScratchCommentSign", { fg = "#2fafff", bg = "#004065" })
 ```
 
-the editor dims behind the comment window, using `ScratchCommentBackdrop`.
+the editor dims behind the comment window and behind the card beside
+`:CommentList`, using `ScratchCommentBackdrop`.
 for a lighter dim, or none at all:
 
 ```lua
