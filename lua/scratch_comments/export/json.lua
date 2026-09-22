@@ -1,9 +1,9 @@
 local M = {}
 
----@param items ScratchCommentView[]
+---@param views ScratchCommentView[]
 ---@param orphans ScratchComment[]
 ---@return string
-function M.render(items, orphans)
+function M.render(views, orphans)
   local comments = vim.tbl_map(function(comment)
     return {
       id = comment.id,
@@ -16,7 +16,7 @@ function M.render(items, orphans)
       snippet = comment.snippet,
       comment = comment.comment,
     }
-  end, items)
+  end, views)
 
   local orphaned = vim.tbl_map(function(comment)
     return {

@@ -8,17 +8,13 @@ to paste into an LLM or hand to a person.
 With `lazy.nvim`:
 
 ```lua
-{
-  "eleith/scratch-comments.nvim",
-  opts = {},
-}
+{ "eleith/scratch-comments.nvim" }
 ```
 
 With `vim.pack`:
 
 ```lua
 vim.pack.add({ { src = "https://git.eleith.com/eleith/scratch-comments.nvim" } })
-require("scratch_comments").setup()
 ```
 
 ## use
@@ -38,13 +34,14 @@ comment on them, or just a word or phrase to comment on only that:
 ```
 
 a window opens in the middle of the screen, with the lines you're commenting on
-at the top and your comment below. it opens in insert mode, and its title shows
-the mode you're in. write as many lines as you like, then `:wq` to save. `:q`
-closes it if you haven't changed anything, and `:q!` throws your changes away.
-`<C-w>w` moves between the two parts, or scroll them with the mouse.
+at the top and your comment below. a new comment opens in insert mode, and the
+title shows the mode you're in. write as many lines as you like, then `:wq` to
+save. `:q` closes it if you haven't changed anything, and `:q!` throws your
+changes away. `<C-w>w` moves between the two parts, or scroll them with the
+mouse.
 
 commented lines get a mark in the sign column: `│` for one line, and `╭` `│` `╰`
-down a range. read a comment on the cursor line, in the same window:
+down a range. to read the comment on the cursor line:
 
 ```vim
 :CommentShow
@@ -71,10 +68,9 @@ it, pipe it to a command, or edit it:
 | Command | Does |
 | --- | --- |
 | `:Comment` | Comment on the current line or command range |
-| `:CommentShow` | Show the comment at the cursor, with the lines it's on |
+| `:CommentShow` | Show the comment at the cursor, with the lines it's on. Edit it there and `:w` to save |
 | `:CommentNext` | Go to the next comment in the file |
 | `:CommentPrev` | Go to the previous comment in the file |
-| `:CommentEdit` | Edit the comment at the cursor |
 | `:CommentDelete` | Delete the comment at the cursor, or pick an orphaned one |
 | `:CommentList` | Put comments in the quickfix list and open it |
 | `:CommentExport[!] [format]` | Copy all comments to the clipboard as `markdown` (default) or `json`. `!` opens them in a scratch buffer |
@@ -98,10 +94,11 @@ vim.keymap.set("n", "<leader>cx", "<Cmd>CommentExport<CR>", { desc = "Copy comme
 ## browsing
 
 `:CommentNext` and `:CommentPrev` move between comments in the current file,
-wrapping at the ends. With a `:CommentShow` window open, they show the next or
-previous comment in that window instead. `:CommentList` puts all your comments in the quickfix
-list, so `]q` and `[q` move between them across files, and any quickfix viewer
-works:
+wrapping at the ends. with a comment open, they show the next or previous
+comment in that window instead. save or discard your changes first.
+
+`:CommentList` puts all your comments in the quickfix list, so `]q` and `[q`
+move between them across files, and any quickfix viewer works:
 
 ```vim
 :copen                       " built in, no plugins
@@ -137,12 +134,10 @@ vim.api.nvim_set_hl(0, "ScratchCommentSign", { fg = "#2fafff", bg = "#004065" })
 ```lua
 local scratch = require("scratch_comments")
 
-scratch.setup()
 scratch.add(start_line, end_line)  -- default: the cursor line
 scratch.show()
 scratch.next()
 scratch.prev()
-scratch.edit()
 scratch.delete()
 scratch.list()
 scratch.render(format)             -- "markdown" (default) or "json"
@@ -159,9 +154,35 @@ vim.fn.writefile(vim.split(scratch.render(), "\n"), "review.md")
 
 ## requirements
 
-- Neovim 0.10 or newer.
+- Neovim 0.12 or newer.
 - No plugin dependencies.
 - A clipboard provider. in tmux you may need `vim.g.clipboard = "osc52"`.
+
+## development
+
+```
+plugin/scratch-comments.lua   the commands
+lua/scratch_comments/
+  init.lua        the lua API
+  actions.lua     comment, show, delete, toggle, clear
+  navigate.lua    next and prev
+  comments.lua    changes comments and keeps the signs in sync
+  location.lua    "line 3", "lines 3–5", "line 3, col 5–12"
+  paths.lua       git root and relative paths
+  model/          the comments and where they are
+  ui/             the comment window, signs, quickfix, notifications
+  export/         markdown, json and the clipboard
+tests/
+  unit/           tests for single modules
+  features/       tests that run the commands
+```
+
+`mise install` gets the pinned tools. then:
+
+```sh
+make check   # lint, format check and tests, like CI
+make test    # tests only. the first run clones mini.test into deps/
+```
 
 ## credit
 

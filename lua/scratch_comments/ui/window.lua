@@ -1,3 +1,5 @@
+local location = require("scratch_comments.location")
+
 local M = {}
 
 local mode_names = {
@@ -10,39 +12,15 @@ local mode_names = {
   R = "REPLACE",
 }
 
-local function level(name)
-  return vim.log.levels[(name or "info"):upper()] or vim.log.levels.INFO
-end
+---@class ScratchCommentWindow
+---@field id? string unset until a new comment is saved
+---@field bufnr integer
+---@field line integer
+---@field source_win integer
+---@field comment_win? integer
 
----@param message string
----@param kind? "info"|"warn"|"error"
-function M.notify(message, kind)
-  vim.schedule(function()
-    local opts = { title = "scratch-comments" }
-    if kind == "error" or kind == "warn" then
-      opts.timeout = 10000
-    end
-    vim.notify(message, level(kind), opts)
-  end)
-end
-
----@param text string
----@return string
-function M.summary(text)
-  return vim.split(text, "\n")[1]
-end
-
--- Cuts from the left so the line range and the file extension stay visible.
----@param text string
----@param width integer
----@return string
-local function fit(text, width)
-  local start = 0
-  while vim.fn.strdisplaywidth(vim.fn.strcharpart(text, start)) > width do
-    start = start + 1
-  end
-  return start == 0 and text or "…" .. vim.fn.strcharpart(text, start + 1)
-end
+---@type ScratchCommentWindow?
+local current
 
 ---@param lines string[]
 ---@param filetype string
@@ -61,13 +39,12 @@ end
 ---@field context string[]
 ---@field filetype string
 ---@field comment string
----@field on_save? fun(text: string)
----@field on_close? fun()
+---@field on_save fun(text: string)
 ---@field comment_title? string
 
 ---@param frame ScratchFrame
 ---@return integer comment_win
-function M.open_frame(frame)
+local function open_frame(frame)
   local comment_lines = vim.split(frame.comment, "\n")
   local width = math.min(80, vim.o.columns - 4)
   local context_height = math.min(#frame.context, math.floor(vim.o.lines * 0.4))
@@ -86,7 +63,7 @@ function M.open_frame(frame)
     width = width,
     height = context_height,
     border = border,
-    title = " " .. fit(frame.title, width - 2) .. " ",
+    title = " " .. location.fit(frame.title, width - 2) .. " ",
     title_pos = "center",
     style = "minimal",
   })
@@ -99,14 +76,14 @@ function M.open_frame(frame)
     width = width,
     height = comment_height,
     border = border,
-    title = " " .. (frame.comment_title or "comment") .. " ",
+    title = " comment ",
     title_pos = "center",
     style = "minimal",
   })
   vim.wo[comment_win].wrap = true
   vim.wo[comment_win].linebreak = true
   for _, win in ipairs({ context_win, comment_win }) do
-    vim.wo[win].winhighlight = "NormalFloat:Normal"
+    vim.wo[win].winhighlight = "NormalFloat:Normal,LineNr:Normal"
     vim.wo[win].statuscolumn = "  "
   end
 
@@ -115,8 +92,8 @@ function M.open_frame(frame)
     once = true,
     callback = function()
       pcall(vim.api.nvim_win_close, context_win, true)
-      if frame.on_close then
-        frame.on_close()
+      if current and current.comment_win == comment_win then
+        current = nil
       end
     end,
   })
@@ -129,19 +106,14 @@ function M.open_frame(frame)
     end,
   })
 
-  if not frame.on_save then
-    vim.bo[comment_buf].modifiable = false
-    return comment_win
-  end
-
   local function show_mode()
     if vim.api.nvim_win_is_valid(comment_win) then
       local mode = vim.api.nvim_get_mode().mode:sub(1, 1)
       local name = mode_names[mode] or "NORMAL"
-      vim.api.nvim_win_set_config(
-        comment_win,
-        { title = " comment [" .. name .. "] ", title_pos = "center" }
-      )
+      vim.api.nvim_win_set_config(comment_win, {
+        title = " " .. (frame.comment_title or "comment") .. " [" .. name .. "] ",
+        title_pos = "center",
+      })
       vim.cmd.redraw()
     end
   end
@@ -167,44 +139,18 @@ function M.open_frame(frame)
   return comment_win
 end
 
----@param text string
----@param filetype string
-function M.open_scratch(text, filetype)
-  vim.cmd.new()
-  vim.bo.buftype = "nofile"
-  vim.bo.bufhidden = "wipe"
-  vim.bo.swapfile = false
-  vim.bo.filetype = filetype
-  vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(text, "\n"))
+---@param frame ScratchFrame
+---@param window ScratchCommentWindow
+function M.open(frame, window)
+  window.comment_win = open_frame(frame)
+  current = window
 end
 
--- Quickfix rather than a picker: any quickfix front-end (Trouble, Snacks,
--- Telescope, nvim-bqf) can display it.
----@param items ScratchCommentView[]
----@param orphans ScratchComment[]
-function M.list(items, orphans)
-  if #items + #orphans == 0 then
-    M.notify("No comments", "info")
-    return
+---@return ScratchCommentWindow? window the open comment window, if any
+function M.current()
+  if current and vim.api.nvim_win_is_valid(current.comment_win) then
+    return current
   end
-
-  local entries = vim.tbl_map(function(comment)
-    return {
-      filename = comment.file_path,
-      lnum = comment.start_line,
-      end_lnum = comment.end_line,
-      text = M.summary(comment.comment),
-    }
-  end, items)
-  for _, comment in ipairs(orphans) do
-    table.insert(
-      entries,
-      { filename = comment.file_path, text = "[orphaned] " .. M.summary(comment.comment) }
-    )
-  end
-
-  vim.fn.setqflist({}, " ", { title = "Comments", items = entries })
-  vim.cmd.copen()
 end
 
 return M

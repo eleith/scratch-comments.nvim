@@ -20,10 +20,10 @@ and |:CommentShow| shows the comment on the cursor line.
 Comments live in the buffer. They go away when you close the buffer or clear
 them.
 
-Setup: >lua
-    require("scratch_comments").setup()
-<
+The commands work as soon as the plugin is installed. There is no setup.
 Add your own mappings. See |scratch-comments-api| for examples.
+
+Requires Neovim 0.12 or newer.
 
 ==============================================================================
 2. COMMANDS                                       *scratch-comments-commands*
@@ -32,42 +32,40 @@ Add your own mappings. See |scratch-comments-api| for examples.
 :[range]Comment         Comment on the current line, or on [range]. To comment
                         on a selection, select it and type ":Comment", which
                         gives ":'<,'>Comment". A characterwise selection
-                        (|v|) comments on just the selected text; a linewise
-                        one (|V|) on whole lines. If that exact text already
-                        has a comment, edit it.
+                        (|v|) comments on just the selected text. A linewise
+                        one (|V|) comments on whole lines. If that exact text
+                        already has a comment, edit it.
 
                         A window opens in the middle of the screen: the lines
                         you are commenting on at the top, your comment below.
-                        It opens in insert mode, and its title shows the mode
-                        you are in. Write as many lines as you like, then
-                        |:wq| to save. |:q| closes it if nothing changed, and
-                        |:q!| throws your changes away. |CTRL-W_w| moves
-                        between the two parts, or scroll them with the mouse.
+                        A new comment opens in insert mode, and the title
+                        shows the mode you are in. Write as many lines as you
+                        like, then |:wq| to save. |:q| closes it if nothing
+                        changed, and |:q!| throws your changes away.
+                        |CTRL-W_w| moves between the two parts, or scroll them
+                        with the mouse.
 
                                                                 *:CommentShow*
-:CommentShow            Show the comment at the cursor in the same window,
-                        read-only, with the lines it is on. If more than one
-                        comment covers the line, asks which one. |:q| closes
-                        it.
+:CommentShow            Open the comment at the cursor, with the lines it is
+                        on, in the same window |:Comment| uses. If more than
+                        one comment covers the line, asks which one. It opens
+                        in normal mode. Edit the comment and |:w| to save, or
+                        |:q| to close it.
 
                                                                 *:CommentNext*
 :CommentNext            Go to the next comment in the current file, wrapping
                         at the end. Comments that start on the same line are
                         one stop.
 
-                        With a |:CommentShow| window open, show the next
-                        comment in it instead, one comment at a time. The
-                        cursor in the file follows.
+                        With a comment open, show the next comment in that
+                        window instead. Every comment is a stop, even on the
+                        same line, and the cursor in the file follows. Save
+                        or discard your changes first.
 
                                                                 *:CommentPrev*
 :CommentPrev            Go to the previous comment in the current file,
-                        wrapping at the start. With a |:CommentShow| window
-                        open, show the previous comment in it.
-
-                                                                *:CommentEdit*
-:CommentEdit            Edit the comment at the cursor in the same window. If
-                        more than one comment covers the line, asks which
-                        one.
+                        wrapping at the start. With a comment open, show the
+                        previous comment in that window instead.
 
                                                               *:CommentDelete*
 :CommentDelete          Delete the comment at the cursor. If more than one
@@ -78,6 +76,7 @@ Add your own mappings. See |scratch-comments-api| for examples.
                                                                 *:CommentList*
 :CommentList            Put every comment in the |quickfix| list and open it.
                         |]q| and |[q| then move between comments across files.
+                        For a comment on selected text, they land on the text.
                         Any quickfix front-end (trouble.nvim, nvim-bqf,
                         Snacks.picker.qflist, :Telescope quickfix) can show
                         it.
@@ -106,7 +105,7 @@ selected within them.
 
 - Commenting on the same lines again edits that comment.
 - Commenting on different lines adds a new comment, even if the lines overlap
-  another comment. A comment on lines 10-30 and one on line 14 are separate.
+  another comment. A comment on lines 10–30 and one on line 14 are separate.
 
 ==============================================================================
 4. RETENTION                                     *scratch-comments-retention*
@@ -129,7 +128,7 @@ In tmux you may need to set the clipboard to OSC 52 yourself: >lua
 
 Each commented line gets a sign: "│" for a one-line comment, and "╭", "│", "╰"
 down a range. The signs share the column with plugins like gitsigns and can
-cover their signs; |:CommentToggle| hides ours when you need to see theirs.
+cover their signs. |:CommentToggle| hides ours when you need to see theirs.
 
                                                          *ScratchCommentSign*
 The signs use ScratchCommentSign, which links to |hl-Todo|. To change it: >lua
@@ -145,12 +144,10 @@ The signs use ScratchCommentSign, which links to |hl-Todo|. To change it: >lua
 >lua
     local scratch = require("scratch_comments")
 
-    scratch.setup()
     scratch.add(start_line, end_line)  -- default: the cursor line
     scratch.show()
     scratch.next()
     scratch.prev()
-    scratch.edit()
     scratch.delete()
     scratch.list()
     scratch.render(format)             -- "markdown" (default) or "json"

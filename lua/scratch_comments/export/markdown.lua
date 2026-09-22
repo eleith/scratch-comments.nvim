@@ -1,3 +1,5 @@
+local location = require("scratch_comments.location")
+
 local M = {}
 
 local function extension(path)
@@ -11,21 +13,14 @@ local function fence_for(text)
   return "```"
 end
 
-local function line_range(comment)
-  if comment.start_line == comment.end_line then
-    return "line " .. comment.start_line
-  end
-  return "lines " .. comment.start_line .. "-" .. comment.end_line
-end
-
----@param items ScratchCommentView[]
+---@param views ScratchCommentView[]
 ---@param orphans ScratchComment[]
 ---@return string
-function M.render(items, orphans)
+function M.render(views, orphans)
   local lines = { "Comments:", "" }
 
   local current_file = nil
-  for _, comment in ipairs(items) do
+  for _, comment in ipairs(views) do
     local file = comment.relative_path
     if file ~= current_file then
       current_file = file
@@ -34,7 +29,7 @@ function M.render(items, orphans)
     end
 
     local fence = fence_for(comment.snippet)
-    table.insert(lines, "- " .. line_range(comment) .. " (" .. comment.id .. ")")
+    table.insert(lines, "- " .. location.describe(comment) .. " (" .. comment.id .. ")")
     table.insert(lines, "")
     table.insert(lines, comment.comment or "")
     table.insert(lines, "")
