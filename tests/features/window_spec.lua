@@ -1,15 +1,21 @@
 local helpers = require("helpers")
 local expect = MiniTest.expect
 
+local size
 local source
 
 before_each(function()
   helpers.reset()
+  size = { vim.o.columns, vim.o.lines }
   source = helpers.buffer("notes.md", { "one", "two", "three", "four" })
   vim.cmd("1,3Comment")
   helpers.write("on one to three")
   vim.api.nvim_win_set_cursor(0, { 1, 0 })
   vim.cmd("CommentShow")
+end)
+
+after_each(function()
+  vim.o.columns, vim.o.lines = size[1], size[2]
 end)
 
 describe("the comment window", function()
@@ -61,6 +67,22 @@ describe("the comment window", function()
       end
       expect.equality(#groups, 7)
     end
+  end)
+
+  it("follows the editor's size", function()
+    vim.o.columns, vim.o.lines = 60, 20
+    vim.api.nvim_exec_autocmds("VimResized", {})
+    local lines_win, comment_win = helpers.panes()
+    for _, win in ipairs({ lines_win, comment_win }) do
+      local config = vim.api.nvim_win_get_config(win)
+      expect.equality(config.width, 56)
+      expect.equality(config.col, 2)
+    end
+    local top = vim.api.nvim_win_get_config(lines_win)
+    local bottom = vim.api.nvim_win_get_config(comment_win)
+    expect.equality(bottom.row, top.row + top.height + 2)
+    expect.equality(top.height <= math.floor(20 * 0.4), true)
+    expect.equality(helpers.title(lines_win), " notes.md [lines 1–3] ")
   end)
 
   it("closes both panes when one closes", function()

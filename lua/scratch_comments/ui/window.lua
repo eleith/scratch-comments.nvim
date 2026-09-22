@@ -46,24 +46,37 @@ end
 ---@return integer comment_win
 local function open_frame(frame)
   local comment_lines = vim.split(frame.comment, "\n")
-  local width = math.min(80, vim.o.columns - 4)
-  local context_height = math.min(#frame.context, math.floor(vim.o.lines * 0.4))
-  local comment_height = math.min(math.max(#comment_lines, 5), math.floor(vim.o.lines * 0.3))
-  -- Each pane has a top and a bottom border line.
-  local row = math.floor((vim.o.lines - context_height - comment_height - 4) / 2)
-  local col = math.floor((vim.o.columns - width) / 2)
+  local wanted_context = #frame.context
+  local wanted_comment = math.max(#comment_lines, 5)
+
+  ---@return { width: integer, col: integer, row: integer, context: integer, comment: integer }
+  local function layout()
+    local width = math.min(80, vim.o.columns - 4)
+    local context = math.min(wanted_context, math.floor(vim.o.lines * 0.4))
+    local comment = math.min(wanted_comment, math.floor(vim.o.lines * 0.3))
+    return {
+      width = width,
+      col = math.floor((vim.o.columns - width) / 2),
+      -- Each pane has a top and a bottom border line.
+      row = math.floor((vim.o.lines - context - comment - 4) / 2),
+      context = context,
+      comment = comment,
+    }
+  end
+
+  local place = layout()
   local border = (vim.o.winborder == "" or vim.o.winborder == "none") and "rounded" or nil
 
   local context_buf = frame_buffer(frame.context, frame.filetype)
   vim.bo[context_buf].modifiable = false
   local context_win = vim.api.nvim_open_win(context_buf, false, {
     relative = "editor",
-    row = row,
-    col = col,
-    width = width,
-    height = context_height,
+    row = place.row,
+    col = place.col,
+    width = place.width,
+    height = place.context,
     border = border,
-    title = " " .. location.fit(frame.title, width - 2) .. " ",
+    title = " " .. location.fit(frame.title, place.width - 2) .. " ",
     title_pos = "center",
     style = "minimal",
   })
@@ -71,10 +84,10 @@ local function open_frame(frame)
   local comment_buf = frame_buffer(comment_lines, "markdown")
   local comment_win = vim.api.nvim_open_win(comment_buf, true, {
     relative = "editor",
-    row = row + context_height + 2,
-    col = col,
-    width = width,
-    height = comment_height,
+    row = place.row + place.context + 2,
+    col = place.col,
+    width = place.width,
+    height = place.comment,
     border = border,
     title = " comment ",
     title_pos = "center",
@@ -96,6 +109,31 @@ local function open_frame(frame)
     }, ",")
     vim.wo[win].statuscolumn = "  "
   end
+
+  vim.api.nvim_create_autocmd("VimResized", {
+    callback = function()
+      if not vim.api.nvim_win_is_valid(comment_win) then
+        return true
+      end
+      local resized = layout()
+      vim.api.nvim_win_set_config(context_win, {
+        relative = "editor",
+        row = resized.row,
+        col = resized.col,
+        width = resized.width,
+        height = resized.context,
+        title = " " .. location.fit(frame.title, resized.width - 2) .. " ",
+        title_pos = "center",
+      })
+      vim.api.nvim_win_set_config(comment_win, {
+        relative = "editor",
+        row = resized.row + resized.context + 2,
+        col = resized.col,
+        width = resized.width,
+        height = resized.comment,
+      })
+    end,
+  })
 
   vim.api.nvim_create_autocmd("WinClosed", {
     pattern = tostring(comment_win),
