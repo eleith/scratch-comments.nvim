@@ -152,7 +152,7 @@ vim.fn.writefile(vim.split(scratch.render(), "\n"), "review.md")
 
 ## requirements
 
-- Neovim 0.10 or newer.
+- Neovim 0.12 or newer.
 - No plugin dependencies.
 - A clipboard provider. in tmux you may need `vim.g.clipboard = "osc52"`.
 

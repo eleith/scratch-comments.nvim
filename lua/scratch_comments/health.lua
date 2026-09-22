@@ -3,10 +3,10 @@ local M = {}
 function M.check()
   vim.health.start("scratch-comments")
 
-  if vim.fn.has("nvim-0.10") == 1 then
+  if vim.fn.has("nvim-0.12") == 1 then
     vim.health.ok("Neovim version is supported")
   else
-    vim.health.warn("Neovim 0.10 or newer is required")
+    vim.health.warn("Neovim 0.12 or newer is required")
   end
 
   if vim.fn.has("clipboard") == 1 or vim.g.clipboard ~= nil then

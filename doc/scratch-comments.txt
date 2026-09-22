@@ -23,6 +23,8 @@ them.
 The commands are there once the plugin is installed; no setup is needed.
 Add your own mappings. See |scratch-comments-api| for examples.
 
+Requires Neovim 0.12 or newer.
+
 ==============================================================================
 2. COMMANDS                                       *scratch-comments-commands*
 
