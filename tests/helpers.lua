@@ -33,10 +33,12 @@ function M.write(text)
   vim.cmd("wq")
 end
 
+-- The backdrop is not part of the frame, so specs count only the panes.
 ---@return integer[]
 function M.floats()
   return vim.tbl_filter(function(win)
     return vim.api.nvim_win_get_config(win).relative ~= ""
+      and not vim.w[win].scratch_comments_backdrop
   end, vim.api.nvim_list_wins())
 end
 
@@ -109,8 +111,15 @@ function M.text_changed()
 end
 
 -- Every spec starts from one empty window with no comments.
+---@return integer[]
+function M.every_float()
+  return vim.tbl_filter(function(win)
+    return vim.api.nvim_win_get_config(win).relative ~= ""
+  end, vim.api.nvim_list_wins())
+end
+
 function M.reset()
-  for _, win in ipairs(M.floats()) do
+  for _, win in ipairs(M.every_float()) do
     -- Closing one pane of a comment window closes the other.
     if vim.api.nvim_win_is_valid(win) then
       vim.api.nvim_win_close(win, true)

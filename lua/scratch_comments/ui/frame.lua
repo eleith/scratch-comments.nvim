@@ -1,3 +1,4 @@
+local backdrop = require("scratch_comments.ui.backdrop")
 local location = require("scratch_comments.location")
 
 local M = {}
@@ -49,6 +50,7 @@ function M.open(frame)
     }
   end
 
+  local dim = backdrop.open()
   local place = layout()
   local border = (vim.o.winborder == "" or vim.o.winborder == "none") and "rounded" or nil
 
@@ -101,6 +103,7 @@ function M.open(frame)
         return true
       end
       local resized = layout()
+      backdrop.resize(dim)
       vim.api.nvim_win_set_config(context_win, {
         relative = "editor",
         row = resized.row,
@@ -125,6 +128,7 @@ function M.open(frame)
     once = true,
     callback = function()
       pcall(vim.api.nvim_win_close, context_win, true)
+      backdrop.close(dim)
       if frame.on_close then
         frame.on_close()
       end

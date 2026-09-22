@@ -2,6 +2,7 @@ vim.opt.runtimepath:prepend(vim.fn.getcwd())
 vim.opt.runtimepath:prepend(assert(vim.env.MINI_TEST, "MINI_TEST is not set; run make test"))
 vim.opt.swapfile = false
 vim.opt.showmode = false
+vim.opt.termguicolors = true
 package.path = vim.fn.getcwd() .. "/tests/?.lua;" .. package.path
 
 require("mini.test").setup({
