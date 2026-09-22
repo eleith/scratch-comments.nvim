@@ -25,18 +25,18 @@ local mode_names = {
 local current
 
 ---@param spec ScratchFrame
----@param window ScratchCommentWindow
-function M.open(spec, window)
+---@param record ScratchCommentWindow
+function M.open(spec, record)
   preview.close()
   spec.on_close = function()
-    if current and current.comment_win == window.comment_win then
+    if current and current.comment_win == record.comment_win then
       current = nil
     end
   end
   local panes = frame.open(spec)
   local comment_win, comment_buf = panes.comment_win, panes.comment_buf
-  window.comment_win = comment_win
-  current = window
+  record.comment_win = comment_win
+  current = record
 
   local function show_mode()
     if vim.api.nvim_win_is_valid(comment_win) then

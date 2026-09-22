@@ -70,42 +70,21 @@ function M.show(view, source_win)
   )
 end
 
----@param start_line integer
----@param end_line integer
----@param use_selection? boolean
-function M.comment(start_line, end_line, use_selection)
-  local bufnr = vim.api.nvim_get_current_buf()
-  local name = vim.api.nvim_buf_get_name(bufnr)
-  if name == "" then
-    notify.warn("Save the buffer before commenting on it")
-    return
-  end
-  start_line, end_line = math.min(start_line, end_line), math.max(start_line, end_line)
-  local start_col, end_col
-  if use_selection then
-    start_col, end_col = selected_columns(start_line, end_line)
-  end
-
-  local existing = find_anchor(bufnr, start_line, end_line, start_col, end_col)
-  if existing then
-    M.show(existing, vim.api.nvim_get_current_win())
-    return
-  end
-
-  local file_path = vim.fn.fnamemodify(name, ":p")
+-- Opens an editor for a comment that does not exist yet; it is created when
+-- the window is first saved.
+---@param bufnr integer
+---@param file_path string
+---@param where ScratchLocation
+local function edit_new(bufnr, file_path, where)
   local relative_path = paths.relative_path(paths.git_root(file_path), file_path)
   ---@type ScratchComment?
   local added
   ---@type ScratchCommentWindow
-  local record = { bufnr = bufnr, line = start_line, source_win = vim.api.nvim_get_current_win() }
+  local record =
+    { bufnr = bufnr, line = where.start_line, source_win = vim.api.nvim_get_current_win() }
   window.open({
-    title = location.title(file_path, {
-      start_line = start_line,
-      end_line = end_line,
-      start_col = start_col,
-      end_col = end_col,
-    }),
-    context = views.text(bufnr, start_line, end_line, start_col, end_col),
+    title = location.title(file_path, where),
+    context = views.text(bufnr, where.start_line, where.end_line, where.start_col, where.end_col),
     filetype = vim.bo[bufnr].filetype,
     comment = "",
     on_save = function(text)
@@ -124,16 +103,41 @@ function M.comment(start_line, end_line, use_selection)
         comment = text,
         file_path = file_path,
         relative_path = relative_path,
-      }, {
-        start_line = start_line,
-        end_line = end_line,
-        start_col = start_col,
-        end_col = end_col,
-      })
+      }, where)
       record.id = added.id
       notify.info("Added comment")
     end,
   }, record)
+end
+
+---@param start_line integer
+---@param end_line integer
+---@param use_selection? boolean
+function M.comment(start_line, end_line, use_selection)
+  local bufnr = vim.api.nvim_get_current_buf()
+  local name = vim.api.nvim_buf_get_name(bufnr)
+  if name == "" then
+    notify.warn("Save the buffer before commenting on it")
+    return
+  end
+
+  ---@type ScratchLocation
+  local where = {
+    start_line = math.min(start_line, end_line),
+    end_line = math.max(start_line, end_line),
+  }
+  if use_selection then
+    where.start_col, where.end_col = selected_columns(where.start_line, where.end_line)
+  end
+
+  local existing =
+    find_anchor(bufnr, where.start_line, where.end_line, where.start_col, where.end_col)
+  if existing then
+    M.show(existing, vim.api.nvim_get_current_win())
+    return
+  end
+
+  edit_new(bufnr, vim.fn.fnamemodify(name, ":p"), where)
 end
 
 ---@param view ScratchCommentView

@@ -58,36 +58,49 @@ function M.open(frame)
     }
   end
 
+  ---@param place table
+  ---@return vim.api.keyset.win_config context
+  ---@return vim.api.keyset.win_config comment
+  local function placement(place)
+    return {
+      relative = "editor",
+      row = place.row,
+      col = place.col,
+      width = place.width,
+      height = place.context,
+      title = " " .. location.fit(frame.title, place.width - 2) .. " ",
+      title_pos = "center",
+    }, {
+      relative = "editor",
+      row = place.row + place.context + 2,
+      col = place.col,
+      width = place.width,
+      height = place.comment,
+    }
+  end
+
   local dim = frame.backdrop ~= false and backdrop.open(frame.lines) or nil
-  local place = layout()
+  local context_place, comment_place = placement(layout())
   local border = (vim.o.winborder == "" or vim.o.winborder == "none") and "rounded" or nil
 
   local context_buf = frame_buffer(frame.context, frame.filetype)
   vim.bo[context_buf].modifiable = false
-  local context_win = vim.api.nvim_open_win(context_buf, false, {
-    relative = "editor",
-    row = place.row,
-    col = place.col,
-    width = place.width,
-    height = place.context,
-    border = border,
-    title = " " .. location.fit(frame.title, place.width - 2) .. " ",
-    title_pos = "center",
-    style = "minimal",
-  })
+  local context_win = vim.api.nvim_open_win(
+    context_buf,
+    false,
+    vim.tbl_extend("error", context_place, { border = border, style = "minimal" })
+  )
 
   local comment_buf = frame_buffer(comment_lines, "markdown")
-  local comment_win = vim.api.nvim_open_win(comment_buf, frame.enter ~= false, {
-    relative = "editor",
-    row = place.row + place.context + 2,
-    col = place.col,
-    width = place.width,
-    height = place.comment,
-    border = border,
-    title = " comment ",
-    title_pos = "center",
-    style = "minimal",
-  })
+  local comment_win = vim.api.nvim_open_win(
+    comment_buf,
+    frame.enter ~= false,
+    vim.tbl_extend(
+      "error",
+      comment_place,
+      { border = border, style = "minimal", title = " comment ", title_pos = "center" }
+    )
+  )
   vim.wo[comment_win].wrap = true
   vim.wo[comment_win].linebreak = true
   for _, win in ipairs({ context_win, comment_win }) do
@@ -110,24 +123,10 @@ function M.open(frame)
       if not vim.api.nvim_win_is_valid(comment_win) then
         return true
       end
-      local resized = layout()
       backdrop.resize(dim, frame.lines)
-      vim.api.nvim_win_set_config(context_win, {
-        relative = "editor",
-        row = resized.row,
-        col = resized.col,
-        width = resized.width,
-        height = resized.context,
-        title = " " .. location.fit(frame.title, resized.width - 2) .. " ",
-        title_pos = "center",
-      })
-      vim.api.nvim_win_set_config(comment_win, {
-        relative = "editor",
-        row = resized.row + resized.context + 2,
-        col = resized.col,
-        width = resized.width,
-        height = resized.comment,
-      })
+      local context_resized, comment_resized = placement(layout())
+      vim.api.nvim_win_set_config(context_win, context_resized)
+      vim.api.nvim_win_set_config(comment_win, comment_resized)
     end,
   })
 
