@@ -129,14 +129,10 @@ assert_equal(
 vim.cmd("close")
 assert_equal(#floats(), 0, "closing one pane closes the frame")
 
-local function press(keys)
-  pcall(vim.api.nvim_feedkeys, vim.keycode(keys), "x", false)
-end
-
 selections = { 2 }
 vim.cmd("CommentShow")
-press("<Esc>")
-assert_equal(#floats(), 0, "Esc closes the show window")
+vim.cmd("quit")
+assert_equal(#floats(), 0, ":q closes the show window")
 
 vim.api.nvim_win_set_cursor(0, { 1, 0 })
 selections = { 2 }
@@ -184,13 +180,14 @@ assert_equal(count(), 0, "cancelling with :q! adds nothing")
 assert_equal(#floats(), 0, "cancelling closes the frame")
 
 vim.cmd("Comment")
-press("<Esc><Esc>")
-assert_equal(#floats(), 0, "Esc closes an untouched editor")
+assert_equal(vim.api.nvim_get_mode().mode, "n", "the editor opens in normal mode")
+vim.cmd("quit")
+assert_equal(#floats(), 0, ":q closes an untouched editor")
 
 vim.cmd("Comment")
 vim.api.nvim_buf_set_lines(0, 0, -1, false, { "unsaved" })
-press("<Esc><Esc>")
-assert_equal(#floats(), 2, "Esc keeps an editor with unsaved text")
+pcall(vim.cmd.quit)
+assert_equal(#floats(), 2, ":q keeps an editor with unsaved text")
 vim.cmd("wincmd w")
 pcall(vim.cmd.quit)
 assert_equal(#floats(), 1, "closing the lines pane keeps an unsaved comment open")

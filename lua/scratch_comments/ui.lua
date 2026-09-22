@@ -101,9 +101,6 @@ function M.open_frame(frame)
       pcall(vim.api.nvim_win_close, comment_win, false)
     end,
   })
-  for _, buf in ipairs({ context_buf, comment_buf }) do
-    vim.keymap.set("n", "<Esc>", "<Cmd>quit<CR>", { buffer = buf, desc = "Close" })
-  end
 
   if not frame.on_save then
     vim.bo[comment_buf].modifiable = false
@@ -123,9 +120,6 @@ function M.open_frame(frame)
       vim.bo[comment_buf].modified = false
     end,
   })
-  if frame.comment == "" then
-    vim.cmd.startinsert()
-  end
 end
 
 ---@param text string
