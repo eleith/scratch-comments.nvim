@@ -3,10 +3,16 @@ local location = require("scratch_comments.location")
 local paths = require("scratch_comments.paths")
 local views = require("scratch_comments.model.views")
 local notify = require("scratch_comments.ui.notify")
-local ui = require("scratch_comments.ui")
+local signs = require("scratch_comments.ui.signs")
 local window = require("scratch_comments.ui.window")
 
 local M = {}
+
+---@param text string
+---@return string
+local function summary(text)
+  return vim.split(text, "\n")[1]
+end
 
 ---@param bufnr integer
 ---@param start_line integer
@@ -68,7 +74,7 @@ end
 ---@param start_line integer
 ---@param end_line integer
 ---@param use_selection? boolean
-function M.range(start_line, end_line, use_selection)
+function M.comment(start_line, end_line, use_selection)
   local bufnr = vim.api.nvim_get_current_buf()
   local name = vim.api.nvim_buf_get_name(bufnr)
   if name == "" then
@@ -133,7 +139,7 @@ end
 local function describe(view)
   local lines = view.start_line == view.end_line and tostring(view.start_line)
     or (view.start_line .. "-" .. view.end_line)
-  return "lines " .. lines .. ": " .. ui.summary(view.comment)
+  return "lines " .. lines .. ": " .. summary(view.comment)
 end
 
 ---@param candidates ScratchCommentView[]
@@ -187,13 +193,26 @@ function M.delete_current()
   vim.ui.select(orphans, {
     prompt = "Delete orphaned comment: ",
     format_item = function(comment)
-      return ui.summary(comment.comment)
+      return summary(comment.comment)
     end,
   }, function(comment)
     if comment then
       delete(comment)
     end
   end)
+end
+
+---@param on? boolean
+function M.toggle(on)
+  if on == nil then
+    on = not signs.is_visible()
+  end
+  comments.show_signs(on)
+end
+
+function M.clear()
+  comments.clear()
+  notify.info("Cleared comments")
 end
 
 return M

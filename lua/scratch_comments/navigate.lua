@@ -1,4 +1,4 @@
-local annotate = require("scratch_comments.annotate")
+local actions = require("scratch_comments.actions")
 local notify = require("scratch_comments.ui.notify")
 local views = require("scratch_comments.model.views")
 local window = require("scratch_comments.ui.window")
@@ -38,7 +38,7 @@ local function cycle(current, direction)
       vim.api.nvim_win_set_cursor(0, { target.start_line, target.start_col or 0 })
     end)
   end
-  annotate.show(target, current.source_win)
+  actions.show(target, current.source_win)
 end
 
 ---@param direction 1|-1

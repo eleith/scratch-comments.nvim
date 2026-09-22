@@ -4,19 +4,8 @@ local M = {}
 
 ---@param text string
 ---@return string
-function M.summary(text)
+local function summary(text)
   return vim.split(text, "\n")[1]
-end
-
----@param text string
----@param filetype string
-function M.open_scratch(text, filetype)
-  vim.cmd.new()
-  vim.bo.buftype = "nofile"
-  vim.bo.bufhidden = "wipe"
-  vim.bo.swapfile = false
-  vim.bo.filetype = filetype
-  vim.api.nvim_buf_set_lines(0, 0, -1, false, vim.split(text, "\n"))
 end
 
 -- Quickfix rather than a picker: any quickfix front-end (Trouble, Snacks,
@@ -34,13 +23,13 @@ function M.list(items, orphans)
       filename = comment.file_path,
       lnum = comment.start_line,
       end_lnum = comment.end_line,
-      text = M.summary(comment.comment),
+      text = summary(comment.comment),
     }
   end, items)
   for _, comment in ipairs(orphans) do
     table.insert(
       entries,
-      { filename = comment.file_path, text = "[orphaned] " .. M.summary(comment.comment) }
+      { filename = comment.file_path, text = "[orphaned] " .. summary(comment.comment) }
     )
   end
 
