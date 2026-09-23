@@ -31,6 +31,14 @@ describe("the comment window", function()
     expect.equality(helpers.title((helpers.panes())), " notes.md [lines 1–3] ")
   end)
 
+  it("names an existing comment after its source file and line", function()
+    local bufnr = vim.api.nvim_get_current_buf()
+    expect.equality(
+      vim.api.nvim_buf_get_name(bufnr),
+      "scratch-comments://" .. bufnr .. "/notes.md:1 [comment]"
+    )
+  end)
+
   it("titles the comment pane with the count and mode", function()
     local _, comment_win = helpers.panes()
     expect.equality(helpers.title(comment_win), " comment (1 of 1) [NORMAL] ")

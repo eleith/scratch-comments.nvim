@@ -40,6 +40,15 @@ describe(":Comment", function()
 end)
 
 describe("the comment window", function()
+  it("names the buffer after the source file and line", function()
+    vim.api.nvim_win_set_cursor(0, { 3, 0 })
+    vim.cmd("Comment")
+    local bufnr = vim.api.nvim_get_current_buf()
+    local name = vim.api.nvim_buf_get_name(bufnr)
+    expect.equality(name, "scratch-comments://" .. bufnr .. "/notes.md:3 [comment]")
+    expect.equality(vim.fn.fnamemodify(name, ":t"), "notes.md:3 [comment]")
+  end)
+
   it("titles a new comment with the mode as it changes", function()
     vim.cmd("Comment")
     local titles = {}

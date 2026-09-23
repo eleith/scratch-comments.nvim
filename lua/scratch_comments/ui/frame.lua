@@ -20,6 +20,7 @@ end
 ---@field context string[]
 ---@field filetype string
 ---@field comment string
+---@field comment_name? string name shown for the editable comment buffer
 ---@field on_save? fun(text: string): boolean? false keeps the text unsaved
 ---@field comment_title? string
 ---@field on_close? fun()
@@ -92,6 +93,12 @@ function M.open(frame)
   )
 
   local comment_buf = frame_buffer(comment_lines, "markdown")
+  if frame.comment_name then
+    vim.api.nvim_buf_set_name(
+      comment_buf,
+      "scratch-comments://" .. comment_buf .. "/" .. frame.comment_name
+    )
+  end
   local comment_win = vim.api.nvim_open_win(
     comment_buf,
     frame.enter ~= false,

@@ -33,6 +33,8 @@ function M.open(spec, record)
       current = nil
     end
   end
+  local source_name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(record.bufnr), ":t")
+  spec.comment_name = source_name .. ":" .. record.line .. " [comment]"
   local panes = frame.open(spec)
   local comment_win, comment_buf = panes.comment_win, panes.comment_buf
   record.comment_win = comment_win
@@ -63,7 +65,6 @@ function M.open(spec, record)
   end
 
   vim.bo[comment_buf].buftype = "acwrite"
-  vim.api.nvim_buf_set_name(comment_buf, "scratch-comments://" .. comment_buf)
   if spec.comment == "" then
     vim.cmd.startinsert()
   end
