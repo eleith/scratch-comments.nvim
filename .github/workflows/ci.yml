@@ -15,7 +15,7 @@ jobs:
     # git.eleith.com/eleith/containers (nvim).
     container: ghcr.io/eleith/containers-nvim:0.12.1-luals3.19.1-stylua2.5.2
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: make lint
       - run: make fmt-check
       - run: make test
