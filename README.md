@@ -3,6 +3,20 @@
 comment on any line(s) in any file, then copy them all out as Markdown (or JSON)
 to paste into an LLM or hand to a person.
 
+## why
+
+when reading a file in neovim, sometimes i want to leave comments as i go
+without interruption (no second app, no extra buffer). this plugin keeps track
+of each comment associated to the right location.
+
+afterwards, i can export all the comments to my clipboard (or a file) and
+handoff to an LLM or teammate.
+
+i've found it useful in reviewing plans, code diffs and more. no extra fluff, no
+coordination with a custom agent, format, or process.
+
+just text.
+
 ## install
 
 With `lazy.nvim`:
@@ -128,22 +142,24 @@ orphans are listed last in `:CommentList` and in an "Orphaned" section of the
 export, and undo restores them. to delete one, run `:CommentDelete` on a line
 with no comment.
 
-## configuration
+## colors
 
-the signs use the `ScratchCommentSign` highlight, which links to `Todo`.
-to change it:
+`ScratchCommentSign` colors the signs (linked to `Todo` by default).
+`ScratchCommentBackdrop` dims the editor behind comments and `:CommentList`
+(black at 60% blend by default).
+
+set them in your colorscheme's highlight callback to follow light and dark
+modes. for example, inside Modus's `on_highlights`:
 
 ```lua
-vim.api.nvim_set_hl(0, "ScratchCommentSign", { fg = "#2fafff", bg = "#004065" })
+hl.ScratchCommentSign = { fg = c.fg_main, bg = c.bg_yellow_intense, bold = true }
+hl.ScratchCommentBackdrop = { bg = c.bg_dim }
 ```
 
-the editor dims behind the comment window and behind the card beside
-`:CommentList`, using `ScratchCommentBackdrop`.
-for a lighter dim, or none at all:
+for fixed colors, use `vim.api.nvim_set_hl`. to turn off the dim:
 
 ```lua
-vim.api.nvim_set_hl(0, "ScratchCommentBackdrop", { bg = "#000033" })
-vim.api.nvim_set_hl(0, "ScratchCommentBackdrop", { bg = "NONE" })  -- no dimming
+vim.api.nvim_set_hl(0, "ScratchCommentBackdrop", { bg = "NONE" })
 ```
 
 ## lua API
