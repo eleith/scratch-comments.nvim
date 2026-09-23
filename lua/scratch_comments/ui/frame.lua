@@ -122,6 +122,13 @@ function M.open(frame)
   vim.api.nvim_create_autocmd("VimResized", {
     group = group,
     callback = function()
+      if
+        not (vim.api.nvim_win_is_valid(context_win) and vim.api.nvim_win_is_valid(comment_win))
+      then
+        backdrop.close(dim)
+        pcall(vim.api.nvim_del_augroup_by_id, group)
+        return
+      end
       backdrop.resize(dim, frame.lines)
       local context_resized, comment_resized = placement(layout())
       vim.api.nvim_win_set_config(context_win, context_resized)

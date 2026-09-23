@@ -15,10 +15,32 @@ local function dirname(path)
   return vim.fn.fnamemodify(path, ":p:h")
 end
 
+local function parent(path)
+  local parent_dir = vim.fn.fnamemodify(path, ":h")
+  if parent_dir == path then
+    return nil
+  end
+  return parent_dir
+end
+
+local function find_git_root(path)
+  local dir = dirname(path)
+  while true do
+    if (vim.uv or vim.loop).fs_stat(dir .. "/.git") then
+      return dir
+    end
+    local parent_dir = parent(dir)
+    if parent_dir == nil then
+      return nil
+    end
+    dir = parent_dir
+  end
+end
+
 ---@param path string
 ---@return string? root
 function M.git_root(path)
-  return run({ "git", "-C", dirname(path), "rev-parse", "--show-toplevel" })
+  return run({ "git", "-C", dirname(path), "rev-parse", "--show-toplevel" }) or find_git_root(path)
 end
 
 ---@param root string?
