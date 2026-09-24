@@ -1,5 +1,7 @@
 # scratch-comments.nvim
 
+![Commenting on this README and exporting the comment as Markdown](assets/demo.gif)
+
 comment on any line(s) in any file, then copy them all out as Markdown (or JSON)
 to paste into an LLM or hand to a person.
 
