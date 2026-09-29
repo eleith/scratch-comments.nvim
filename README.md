@@ -63,7 +63,7 @@ down a range. to read the comment on the cursor line:
 :CommentShow
 ```
 
-browse and manage every comment, then copy them all:
+browse every comment, then copy them all:
 
 ```vim
 :CommentList
@@ -115,12 +115,9 @@ comment in that window instead. save or discard your changes first.
 
 `:CommentList` puts all your comments in the quickfix list, so `]q` and `[q`
 move between them across files. while the list is open, the comment under the
-cursor is shown in a card above it. press `<CR>` on an entry to open its source
-and jump to the comment (even if that buffer was closed), or `d` to delete it
-without opening its source. these keys belong to the built-in quickfix list;
-other quickfix viewers can still display the entries. give the command an
-argument to list only comments that fuzzy match it, in their text, snippet or
-path:
+cursor is shown in a card above it. in the built-in list, press `<CR>` to go
+to a comment (even in a closed file), or `d` to delete it. give it an argument
+to list only the comments that fuzzy match it, in their text, snippet or path:
 
 ```vim
 :CommentList typo
@@ -137,29 +134,18 @@ any quickfix viewer works:
 
 ## retention
 
-comments remain in memory when you close, unload or wipe a buffer (`:bd`,
-`:bunload`, `:bw`). the list and export still include them, using their last
-known location and snippet. reopening the same source restores signs if its
-saved text still occupies the same range; comments do not jump to a different
-location automatically. comments go away when you delete them, run
-`:CommentClear`, or exit neovim. export to a file if you need to keep them
-after a restart.
-
-for sources that load asynchronously (such as git revision buffers), a comment
-can remain active without a sign while the source loads. if the plugin cannot
-confirm the load is complete, it leaves the comment active rather than
-mistakenly calling it an orphan.
+comments stay when you close a buffer (`:bd`, `:bw`). open the same source
+again and they'll pick up where they left off if the text is still on the same
+lines. they go away when you delete them, run `:CommentClear`, or exit neovim.
+to keep them longer, export them to a file.
 
 the signs share the sign column with plugins like gitsigns, and can cover their
 signs. `:CommentToggle` hides ours when you need to see theirs.
 
-if you delete all the lines a comment is on, the comment becomes inactive
-(an orphan). a completed ordinary file reload whose saved text no longer
-matches also makes it inactive. inactive comments are listed last in
-`:CommentList` and in an "Orphaned" section of the export. undo restores a
-comment whose original extmark is still present. delete inactive comments
-with `d` in the list, or run `:CommentDelete` on a line with no comment in
-the same buffer.
+if the lines a comment is on are deleted, it becomes an orphan. orphans are
+listed last in `:CommentList` and in an "Orphaned" section of the export. undo
+restores them while the buffer is open. delete one with `d` in the list, or
+run `:CommentDelete` on a line with no comment.
 
 ## colors
 
