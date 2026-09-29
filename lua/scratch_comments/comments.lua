@@ -1,4 +1,5 @@
 local anchors = require("scratch_comments.model.anchors")
+local paths = require("scratch_comments.paths")
 local signs = require("scratch_comments.ui.signs")
 local store = require("scratch_comments.model.store")
 local views = require("scratch_comments.model.views")
@@ -114,14 +115,15 @@ end
 -- only trusted when the saved text still occupies that exact range.
 ---@param bufnr integer
 ---@param definitive? boolean true after a completed ordinary file read
-function M.reattach(bufnr, definitive)
+function M.attach_buffer(bufnr, definitive)
   if not vim.api.nvim_buf_is_loaded(bufnr) then
     return
   end
   local name = vim.api.nvim_buf_get_name(bufnr)
+  local is_uri = paths.is_uri(name)
   -- BufReadCmd providers can return from the command before asynchronously
   -- supplying any text. The initial empty line is not a completed read.
-  if name:match("^%w[%w+.-]*://") then
+  if is_uri then
     local first = vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)[1]
     if first == "" and vim.api.nvim_buf_line_count(bufnr) == 1 then
       return
@@ -131,7 +133,7 @@ function M.reattach(bufnr, definitive)
   for _, comment in ipairs(store.all()) do
     -- An async provider can replace a partial, already-matching range. That
     -- does not prove the source lines were deleted; retry after the update.
-    if name:match("^%w[%w+.-]*://") and comment.bufnr == bufnr and anchors.is_orphaned(comment) then
+    if is_uri and comment.bufnr == bufnr and anchors.is_orphaned(comment) then
       anchors.clear_all({ comment })
       comment.bufnr, comment.extmark_id = nil, nil
       comment.state = "parked"
@@ -190,7 +192,7 @@ vim.api.nvim_create_autocmd("BufReadPost", {
   callback = function(args)
     vim.schedule(function()
       if vim.api.nvim_buf_is_valid(args.buf) then
-        M.reattach(args.buf, true)
+        M.attach_buffer(args.buf, true)
       end
     end)
   end,
@@ -213,11 +215,11 @@ vim.api.nvim_create_autocmd("BufEnter", {
           on_lines = function()
             vim.schedule(function()
               if vim.api.nvim_buf_is_valid(bufnr) then
-                M.reattach(bufnr)
+                M.attach_buffer(bufnr)
               end
             end)
             if
-              not name:match("^%w[%w+.-]*://")
+              not paths.is_uri(name)
               and not vim.iter(store.all()):any(function(comment)
                 return comment.source_name == name and comment.state == "parked"
               end)
@@ -233,10 +235,10 @@ vim.api.nvim_create_autocmd("BufEnter", {
       -- A previously loaded file can be reentered without a read event. For
       -- URI buffers an initial empty pane may still be waiting for BufReadCmd.
       local lines = vim.api.nvim_buf_get_lines(bufnr, 0, 1, false)
-      if not vim.api.nvim_buf_get_name(bufnr):match("^%w[%w+.-]*://") or lines[1] ~= "" then
+      if not paths.is_uri(name) or lines[1] ~= "" then
         vim.schedule(function()
           if vim.api.nvim_buf_is_valid(bufnr) then
-            M.reattach(bufnr)
+            M.attach_buffer(bufnr)
           end
         end)
       end

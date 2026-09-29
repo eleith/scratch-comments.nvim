@@ -76,7 +76,7 @@ end
 ---@param file_path string
 ---@param where ScratchLocation
 local function edit_new(bufnr, file_path, where)
-  local relative_path = file_path:match("^%w[%w+.-]*://") and file_path
+  local relative_path = paths.is_uri(file_path) and file_path
     or paths.relative_path(paths.git_root(file_path), file_path)
   ---@type ScratchComment?
   local added
@@ -139,7 +139,7 @@ function M.comment(start_line, end_line, use_selection)
     return
   end
 
-  edit_new(bufnr, name:match("^%w[%w+.-]*://") and name or vim.fn.fnamemodify(name, ":p"), where)
+  edit_new(bufnr, paths.is_uri(name) and name or vim.fn.fnamemodify(name, ":p"), where)
 end
 
 ---@param view ScratchCommentView

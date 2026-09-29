@@ -1,6 +1,15 @@
 local paths = require("scratch_comments.paths")
 local expect = MiniTest.expect
 
+describe("is_uri", function()
+  it("recognizes provider-neutral URI buffer names", function()
+    expect.equality(paths.is_uri("codediff:////repo///HEAD/a.lua"), true)
+    expect.equality(paths.is_uri("review+git://repo/file.lua"), true)
+    expect.equality(paths.is_uri("/repo/file.lua"), false)
+    expect.equality(paths.is_uri("file:with-colon.lua"), false)
+  end)
+end)
+
 describe("git_root", function()
   it("finds the repository a file is in", function()
     local root = vim.fn.getcwd()
