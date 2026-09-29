@@ -12,6 +12,8 @@ local M = {}
 local list_id
 local list_bufnr
 local active_filter
+local pending_jump = {}
+local listening = {}
 
 ---@param comment ScratchComment|ScratchCommentView
 ---@return string
@@ -66,6 +68,10 @@ local function selected()
 end
 
 local function jump()
+  -- Only the most recent manager jump may move the cursor after a delayed read.
+  for bufnr in pairs(pending_jump) do
+    pending_jump[bufnr] = nil
+  end
   local index, id = selected()
   if not index then
     -- Another plugin replaced our quickfix list; leave its normal navigation usable.
@@ -129,18 +135,36 @@ local function jump()
     return
   end
   -- An async BufReadCmd may fill the buffer after :cc has already moved the
-  -- cursor. Wait for its content change, then use the reattached location.
-  local done = false
-  vim.api.nvim_buf_attach(bufnr, false, {
+  -- cursor. Keep one listener per buffer even if the user jumps repeatedly.
+  pending_jump[bufnr] = position
+  vim.api.nvim_create_autocmd("BufLeave", {
+    buffer = bufnr,
+    once = true,
+    callback = function()
+      if pending_jump[bufnr] == position then
+        pending_jump[bufnr] = nil
+      end
+    end,
+  })
+  if listening[bufnr] then
+    return
+  end
+  listening[bufnr] = vim.api.nvim_buf_attach(bufnr, false, {
     on_lines = function()
-      if done then
+      local current = pending_jump[bufnr]
+      if not current then
+        listening[bufnr] = nil
         return true
       end
       vim.schedule(function()
-        if not done and position() then
-          done = true
+        if pending_jump[bufnr] == current and current() then
+          pending_jump[bufnr] = nil
         end
       end)
+    end,
+    on_detach = function()
+      pending_jump[bufnr] = nil
+      listening[bufnr] = nil
     end,
   })
 end
