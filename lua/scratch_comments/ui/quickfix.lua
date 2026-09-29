@@ -56,7 +56,8 @@ function M.list(views, orphans, on_entry)
 
   local entries = vim.tbl_map(function(comment)
     return {
-      filename = comment.file_path,
+      filename = comment.source_name,
+      user_data = { scratch_comments_id = comment.id },
       lnum = comment.start_line,
       end_lnum = comment.end_line,
       col = comment.start_col and comment.start_col + 1,
@@ -65,15 +66,17 @@ function M.list(views, orphans, on_entry)
     }
   end, views)
   for _, comment in ipairs(orphans) do
-    table.insert(
-      entries,
-      { filename = comment.file_path, text = "[orphaned] " .. summary(comment.comment) }
-    )
+    table.insert(entries, {
+      filename = comment.source_name,
+      user_data = { scratch_comments_id = comment.id },
+      text = "[orphaned] " .. summary(comment.comment),
+    })
   end
 
   vim.fn.setqflist({}, " ", { title = "Comments", items = entries })
   vim.cmd.copen()
   follow(on_entry)
+  return vim.fn.getqflist({ id = 0 }).id
 end
 
 return M

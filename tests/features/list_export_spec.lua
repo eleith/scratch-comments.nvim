@@ -1,6 +1,7 @@
 local clipboard = require("scratch_comments.export.clipboard")
 local helpers = require("helpers")
 local scratch = require("scratch_comments")
+local store = require("scratch_comments.model.store")
 local expect = MiniTest.expect
 
 local copy = clipboard.copy
@@ -100,6 +101,109 @@ describe(":CommentList", function()
     expect.equality(#qf.items, 2)
     expect.equality(qf.items[1].text, "on a")
     vim.cmd("cclose")
+  end)
+end)
+
+describe("the comment list manager", function()
+  it("deletes the selected comment and keeps the filtered list", function()
+    vim.cmd("CommentList export-fixture")
+    local removed = vim.fn.getqflist()[1].user_data.scratch_comments_id
+    vim.cmd("normal d")
+    expect.equality(#store.all(), 1)
+    expect.no_equality(store.all()[1].id, removed)
+    expect.equality(#vim.fn.getqflist(), 1)
+    expect.equality(vim.bo.buftype, "quickfix")
+    vim.cmd.cclose()
+  end)
+
+  it("deletes a parked comment without opening its source", function()
+    vim.cmd("bwipeout! " .. source)
+    expect.equality(#store.all(), 2)
+    vim.cmd.CommentList()
+    vim.cmd("normal d")
+    expect.equality(#store.all(), 1)
+    expect.equality(store.all()[1].comment, "on c")
+    vim.cmd.cclose()
+  end)
+
+  it("deletes an inactive comment from the list", function()
+    vim.cmd.cclose()
+    vim.api.nvim_set_current_buf(source)
+    vim.cmd("1d")
+    helpers.text_changed()
+    vim.cmd.CommentList()
+    local qf = vim.fn.getqflist()
+    local index = vim.iter(qf):enumerate():find(function(_, item)
+      return item.text:find("[orphaned]", 1, true) ~= nil
+    end)
+    vim.api.nvim_win_set_cursor(0, { index, 0 })
+    vim.cmd("normal d")
+    expect.equality(#store.all(), 1)
+    expect.equality(store.all()[1].comment, "on c")
+    vim.cmd.cclose()
+  end)
+
+  it("does not delete another plugin's quickfix entry", function()
+    vim.cmd.CommentList()
+    vim.fn.setqflist({}, " ", { items = { { filename = "other.lua", lnum = 1, text = "other" } } })
+    vim.cmd("normal d")
+    expect.equality(#store.all(), 2)
+    vim.cmd.cclose()
+  end)
+
+  it("jumps to a parked URI after a delayed read", function()
+    local url = "review-test:///comments.lua"
+    local pending
+    vim.api.nvim_create_autocmd("BufReadCmd", {
+      pattern = "review-test:///*",
+      once = true,
+      callback = function(args)
+        pending = args.buf
+      end,
+    })
+    vim.cmd("enew!")
+    vim.api.nvim_buf_set_name(0, url)
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "first", "second" })
+    vim.bo.bufhidden = "wipe"
+    vim.cmd("2Comment")
+    helpers.write("URI comment")
+    local id = store.all()[#store.all()].id
+    vim.cmd("enew!")
+    vim.cmd.CommentList()
+    local index
+    for i, item in ipairs(vim.fn.getqflist()) do
+      if item.user_data.scratch_comments_id == id then
+        index = i
+      end
+    end
+    vim.api.nvim_win_set_cursor(0, { index, 0 })
+    vim.cmd("normal \r")
+    expect.equality(pending, vim.api.nvim_get_current_buf())
+    expect.equality(store.all()[#store.all()].state, "parked")
+    vim.api.nvim_buf_set_lines(pending, 0, -1, false, { "first", "second" })
+    vim.wait(0)
+    expect.equality(store.all()[#store.all()].state, nil)
+    expect.equality(vim.api.nvim_win_get_cursor(0)[1], 2)
+  end)
+
+  it("jumps to a parked file and restores its comment", function()
+    vim.cmd("edit! tests/fixtures/lifecycle.txt")
+    vim.cmd.Comment()
+    helpers.write("in a real file")
+    local wanted = store.all()[#store.all()].id
+    vim.cmd("bdelete")
+    vim.cmd.CommentList()
+    local index
+    for i, item in ipairs(vim.fn.getqflist()) do
+      if item.user_data.scratch_comments_id == wanted then
+        index = i
+      end
+    end
+    vim.api.nvim_win_set_cursor(0, { index, 0 })
+    vim.cmd("normal \r")
+    vim.wait(0)
+    expect.equality(vim.api.nvim_buf_get_name(0), store.all()[#store.all()].source_name)
+    expect.equality(store.all()[#store.all()].state, nil)
   end)
 end)
 
