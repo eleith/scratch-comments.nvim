@@ -105,6 +105,7 @@ function M.park_buffer(bufnr)
     else
       comment.state = "inactive"
     end
+    anchors.clear_all({ comment })
     comment.bufnr, comment.extmark_id = nil, nil
   end
 end
@@ -112,7 +113,8 @@ end
 -- An active source may reopen under a different bufnr. Its old line number is
 -- only trusted when the saved text still occupies that exact range.
 ---@param bufnr integer
-function M.reattach(bufnr)
+---@param definitive? boolean true after a completed ordinary file read
+function M.reattach(bufnr, definitive)
   if not vim.api.nvim_buf_is_loaded(bufnr) then
     return
   end
@@ -127,6 +129,14 @@ function M.reattach(bufnr)
   end
   local changed = false
   for _, comment in ipairs(store.all()) do
+    -- An async provider can replace a partial, already-matching range. That
+    -- does not prove the source lines were deleted; retry after the update.
+    if name:match("^%w[%w+.-]*://") and comment.bufnr == bufnr and anchors.is_orphaned(comment) then
+      anchors.clear_all({ comment })
+      comment.bufnr, comment.extmark_id = nil, nil
+      comment.state = "parked"
+      changed = true
+    end
     if comment.source_name == name and comment.state == "parked" then
       local where = comment.last_location
       local count = vim.api.nvim_buf_line_count(bufnr)
@@ -138,10 +148,10 @@ function M.reattach(bufnr)
           anchors.anchor(comment, where.start_line, where.end_line, where.start_col, where.end_col)
           comment.state = nil
           changed = true
-        else
+        elseif definitive then
           comment.state = "inactive"
         end
-      else
+      elseif definitive then
         comment.state = "inactive"
       end
     end
@@ -180,7 +190,7 @@ vim.api.nvim_create_autocmd("BufReadPost", {
   callback = function(args)
     vim.schedule(function()
       if vim.api.nvim_buf_is_valid(args.buf) then
-        M.reattach(args.buf)
+        M.reattach(args.buf, true)
       end
     end)
   end,
@@ -191,6 +201,13 @@ vim.api.nvim_create_autocmd("BufEnter", {
   callback = function(args)
     local bufnr = args.buf
     if vim.api.nvim_buf_is_loaded(bufnr) then
+      local name = vim.api.nvim_buf_get_name(bufnr)
+      local has_parked = vim.iter(store.all()):any(function(comment)
+        return comment.source_name == name and comment.state == "parked"
+      end)
+      if not has_parked then
+        return
+      end
       if not watched[bufnr] then
         watched[bufnr] = vim.api.nvim_buf_attach(bufnr, false, {
           on_lines = function()
@@ -199,6 +216,14 @@ vim.api.nvim_create_autocmd("BufEnter", {
                 M.reattach(bufnr)
               end
             end)
+            if
+              not name:match("^%w[%w+.-]*://")
+              and not vim.iter(store.all()):any(function(comment)
+                return comment.source_name == name and comment.state == "parked"
+              end)
+            then
+              return true
+            end
           end,
           on_detach = function()
             watched[bufnr] = nil

@@ -130,9 +130,17 @@ local function jump()
   end
   -- An async BufReadCmd may fill the buffer after :cc has already moved the
   -- cursor. Wait for its content change, then use the reattached location.
+  local done = false
   vim.api.nvim_buf_attach(bufnr, false, {
     on_lines = function()
-      vim.schedule(position)
+      if done then
+        return true
+      end
+      vim.schedule(function()
+        if not done and position() then
+          done = true
+        end
+      end)
     end,
   })
 end

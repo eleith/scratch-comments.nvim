@@ -17,8 +17,8 @@ Comment on any lines in any file, then copy the comments out as Markdown or
 JSON to paste into an LLM or give to a person. Commented lines get a sign,
 and |:CommentShow| shows the comment on the cursor line.
 
-Comments live in the buffer. They go away when you close the buffer or clear
-them.
+Comments live in memory for the Neovim session. Closing a buffer does not
+delete its comments; |:CommentClear| or exiting Neovim does.
 
 The commands work as soon as the plugin is installed. There is no setup.
 Add your own mappings. See |scratch-comments-api| for examples.
@@ -82,10 +82,13 @@ Requires Neovim 0.12 or newer.
 
                         While the list is open, the comment the cursor is on
                         is shown in a card above it, with the lines it is on.
-                        The card goes away with the list.
-                        Any quickfix front-end (trouble.nvim, nvim-bqf,
-                        Snacks.picker.qflist, :Telescope quickfix) can show
-                        it.
+                        Press <CR> to open its source and jump to it (including
+                        a source whose buffer was closed), or d to delete that
+                        comment without opening the source. The card goes away
+                        with the list. Other quickfix front-ends (trouble.nvim,
+                        nvim-bqf, Snacks.picker.qflist, :Telescope quickfix)
+                        can show the entries; the <CR> and d mappings belong
+                        to the built-in list.
 
                                                               *:CommentExport*
 :CommentExport[!] [format]
@@ -116,14 +119,22 @@ selected within them.
 ==============================================================================
 4. RETENTION                                     *scratch-comments-retention*
 
-Comments go away when the buffer is deleted (|:bdelete|, |:bwipeout|) or when
-you run |:CommentClear|. Exporting leaves them in place, so you can export as
-often as you like. To keep comments, save an export to a file.
+Closing, unloading or wiping a buffer does not delete its comments. They
+remain in memory with their last location and snippet until you delete them,
+run |:CommentClear|, or exit Neovim. Exporting leaves them in place. Save an
+export to a file if you need to keep comments after exiting Neovim.
 
-If you delete all the lines a comment is on, the comment becomes an orphan.
-Orphans are listed last in |:CommentList| and in an "Orphaned" section of the
-export, and |undo| restores them. To delete one, run |:CommentDelete| on a
-line with no comment.
+When the same source is reopened, signs return if the saved text still occupies
+the same range. Comments are not automatically moved to other lines. For
+asynchronously loaded sources, a comment may remain active without a sign
+until its text arrives; an incomplete load is not treated as an orphan.
+
+If you delete all the lines a comment is on, the comment becomes inactive (an
+orphan). A completed ordinary file reload with mismatched text also makes a
+parked comment inactive. Inactive comments are listed last in |:CommentList|
+and in an "Orphaned" section of the export; |undo| restores an extmark whose
+buffer is still present. Delete an inactive comment with d in the list, or
+use |:CommentDelete| on a line with no comment in the same buffer.
 
 In tmux you may need to set the clipboard to OSC 52 yourself: >lua
     vim.g.clipboard = "osc52"

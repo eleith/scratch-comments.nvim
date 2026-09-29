@@ -188,8 +188,9 @@ function M.delete_current()
   end
 
   local bufnr = vim.api.nvim_get_current_buf()
+  local name = vim.api.nvim_buf_get_name(bufnr)
   local orphans = vim.tbl_filter(function(comment)
-    return comment.bufnr == bufnr
+    return comment.bufnr == bufnr or (comment.state == "inactive" and comment.source_name == name)
   end, views.orphans())
   if #orphans == 0 then
     notify.info("No comment at cursor")
