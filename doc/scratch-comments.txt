@@ -15,10 +15,10 @@ CONTENTS                                          *scratch-comments-contents*
 
 Comment on any lines in any file, then copy the comments out as Markdown or
 JSON to paste into an LLM or give to a person. Commented lines get a sign,
-and |:CommentShow| shows the comment on the cursor line.
+and |:CommentList| lets you browse and edit them.
 
-Comments live in the buffer. They go away when you close the buffer or clear
-them.
+Comments live in memory for the Neovim session. Closing a buffer does not
+delete its comments; |:CommentClear| or exiting Neovim does.
 
 The commands work as soon as the plugin is installed. There is no setup.
 Add your own mappings. See |scratch-comments-api| for examples.
@@ -34,9 +34,12 @@ Requires Neovim 0.12 or newer.
                         gives ":'<,'>Comment". A characterwise selection
                         (|v|) comments on just the selected text. A linewise
                         one (|V|) comments on whole lines. If that exact text
-                        already has a comment, edit it.
+                        already has a comment, open it for editing instead of
+                        adding a duplicate. In the built-in quickfix list
+                        opened by |:CommentList|, open the comment under the
+                        cursor for editing without jumping to its source.
 
-                        A window opens in the middle of the screen: the lines
+                        A window opens over the file: the lines
                         you are commenting on at the top, your comment below.
                         A new comment opens in insert mode, and the title
                         shows the mode you are in. Write as many lines as you
@@ -45,47 +48,32 @@ Requires Neovim 0.12 or newer.
                         |CTRL-W_w| moves between the two parts, or scroll them
                         with the mouse.
 
-                                                                *:CommentShow*
-:CommentShow            Open the comment at the cursor, with the lines it is
-                        on, in the same window |:Comment| uses. If more than
-                        one comment covers the line, asks which one. It opens
-                        in normal mode. Edit the comment and |:w| to save, or
-                        |:q| to close it.
-
-                                                                *:CommentNext*
-:CommentNext            Go to the next comment in the current file, wrapping
-                        at the end. Comments that start on the same line are
-                        one stop.
-
-                        With a comment open, show the next comment in that
-                        window instead. Every comment is a stop, even on the
-                        same line, and the cursor in the file follows. Save
-                        or discard your changes first.
-
-                                                                *:CommentPrev*
-:CommentPrev            Go to the previous comment in the current file,
-                        wrapping at the start. With a comment open, show the
-                        previous comment in that window instead.
-
-                                                              *:CommentDelete*
-:CommentDelete          Delete the comment at the cursor. If more than one
-                        comment covers the line, asks which one. On a line
-                        with no comment, lists the buffer's orphaned comments
-                        to choose from.
-
                                                                 *:CommentList*
 :CommentList [filter]   Put every comment in the |quickfix| list and open it.
                         With [filter], only the comments that fuzzy match it
                         in their text, snippet or path (see |matchfuzzy()|).
-                        |]q| and |[q| then move between comments across files.
-                        For a comment on selected text, they land on the text.
-
-                        While the list is open, the comment the cursor is on
-                        is shown in a card above it, with the lines it is on.
-                        The card goes away with the list.
-                        Any quickfix front-end (trouble.nvim, nvim-bqf,
+                        Moving through the built-in list does not move the
+                        source cursor or open a card. <CR> jumps to the
+                        comment's source location without opening a card.
+                        For an orphan there is no location to jump to; the
+                        list stays open. |:Comment| opens the cursor row's
+                        card for editing without moving the source cursor.
+                        The card opens in normal mode. |:w| saves; saving it
+                        empty deletes it. <Esc> closes a clean card from
+                        the list or the card; unsaved changes require |:w| or
+                        |:q!|. With no card open, <Esc> does nothing.
+                        Other quickfix front-ends (trouble.nvim, nvim-bqf,
                         Snacks.picker.qflist, :Telescope quickfix) can show
-                        it.
+                        the entries; the cursor-row commands and <CR>/<Esc>
+                        belong to the built-in list only.
+
+                                                               *:CommentDelete*
+:CommentDelete          In the built-in quickfix list opened by |:CommentList|,
+                        delete the comment under the cursor without opening
+                        its card. Elsewhere, delete the comment in the open
+                        card. A different quickfix list is never a target.
+                        Save or discard unsaved edits in the targeted card
+                        first.
 
                                                               *:CommentExport*
 :CommentExport[!] [format]
@@ -109,21 +97,31 @@ Requires Neovim 0.12 or newer.
 A comment belongs to a file and a range of lines, or to the exact text you
 selected within them.
 
-- Commenting on the same lines again edits that comment.
+- Commenting on the same lines again opens that comment for editing instead
+  of adding a duplicate.
 - Commenting on different lines adds a new comment, even if the lines overlap
   another comment. A comment on lines 10–30 and one on line 14 are separate.
 
 ==============================================================================
 4. RETENTION                                     *scratch-comments-retention*
 
-Comments go away when the buffer is deleted (|:bdelete|, |:bwipeout|) or when
-you run |:CommentClear|. Exporting leaves them in place, so you can export as
-often as you like. To keep comments, save an export to a file.
+Closing, unloading or wiping a buffer does not delete its comments. They
+remain in memory with their last location and snippet until you delete them,
+run |:CommentClear|, or exit Neovim. Exporting leaves them in place. Save an
+export to a file if you need to keep comments after exiting Neovim.
 
-If you delete all the lines a comment is on, the comment becomes an orphan.
-Orphans are listed last in |:CommentList| and in an "Orphaned" section of the
-export, and |undo| restores them. To delete one, run |:CommentDelete| on a
-line with no comment.
+When the same source is reopened, signs return if the saved text still occupies
+the same range. Comments are not automatically moved to other lines. For
+asynchronously loaded sources, a comment may remain active without a sign
+until its text arrives; an incomplete load is not treated as an orphan.
+
+If you delete all the lines a comment is on, the comment becomes inactive (an
+orphan). A completed ordinary file reload with mismatched text also makes a
+parked comment inactive. Inactive comments are listed last in |:CommentList|
+and in an "Orphaned" section of the export; |undo| restores an extmark whose
+buffer is still present. Delete an inactive comment with |:CommentDelete|
+from the built-in quickfix list or its open card, or open it with |:Comment|
+and save it empty.
 
 In tmux you may need to set the clipboard to OSC 52 yourself: >lua
     vim.g.clipboard = "osc52"
@@ -144,8 +142,8 @@ The signs use ScratchCommentSign, which links to |hl-Todo|. To change it: >lua
     })
 <
                                                      *ScratchCommentBackdrop*
-The editor dims behind the comment window, and behind the card beside
-|:CommentList|, with ScratchCommentBackdrop over it at 'winblend' 60. It
+The editor dims behind the comment window, with ScratchCommentBackdrop over
+it at 'winblend' 60. It
 needs 'termguicolors'. For a different dim, or none: >lua
     vim.api.nvim_set_hl(0, "ScratchCommentBackdrop", { bg = "#000033" })
     vim.api.nvim_set_hl(0, "ScratchCommentBackdrop", { bg = "NONE" })
@@ -158,10 +156,7 @@ needs 'termguicolors'. For a different dim, or none: >lua
     local scratch = require("scratch_comments")
 
     scratch.add(start_line, end_line)  -- default: the cursor line
-    scratch.show()
-    scratch.next()
-    scratch.prev()
-    scratch.delete()
+    scratch.delete()                   -- comment in the open card
     scratch.list()
     scratch.render(format)             -- "markdown" (default) or "json"
     scratch.export(format, in_buffer)  -- copy, or open in a scratch buffer
@@ -171,7 +166,7 @@ needs 'termguicolors'. For a different dim, or none: >lua
 Example mappings: >lua
     vim.keymap.set("n", "<leader>ca", "<Cmd>Comment<CR>")
     vim.keymap.set("x", "<leader>ca", ":Comment<CR>")
-    vim.keymap.set("n", "<leader>cs", "<Cmd>CommentShow<CR>")
+    vim.keymap.set("n", "<leader>cl", "<Cmd>CommentList<CR>")
     vim.keymap.set("n", "<leader>cx", "<Cmd>CommentExport<CR>")
 <
 vim:tw=78:ts=8:noet:ft=help:norl:
