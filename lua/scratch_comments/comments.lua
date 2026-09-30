@@ -131,29 +131,31 @@ function M.attach_buffer(bufnr, definitive)
   end
   local changed = false
   for _, comment in ipairs(store.all()) do
-    -- An async provider can replace a partial, already-matching range. That
-    -- does not prove the source lines were deleted; retry after the update.
+    local where = comment.last_location
+    local matches = false
+    if
+      (comment.source_name == name or comment.bufnr == bufnr)
+      and where.end_line <= vim.api.nvim_buf_line_count(bufnr)
+    then
+      local ok, text =
+        pcall(views.text, bufnr, where.start_line, where.end_line, where.start_col, where.end_col)
+      matches = ok and table.concat(text, "\n") == comment.snippet
+    end
+    -- A provider may replace an already-matching line without changing its
+    -- text. Reanchor that exact range; a changed or deleted line is an orphan.
     if is_uri and comment.bufnr == bufnr and anchors.is_orphaned(comment) then
-      anchors.clear_all({ comment })
-      comment.bufnr, comment.extmark_id = nil, nil
-      comment.state = "parked"
+      if matches then
+        anchors.clear_all({ comment })
+        anchors.anchor(comment, where.start_line, where.end_line, where.start_col, where.end_col)
+      end
       changed = true
     end
     if comment.source_name == name and comment.state == "parked" then
-      local where = comment.last_location
-      local count = vim.api.nvim_buf_line_count(bufnr)
-      if where.end_line <= count then
-        local ok, text =
-          pcall(views.text, bufnr, where.start_line, where.end_line, where.start_col, where.end_col)
-        if ok and table.concat(text, "\n") == comment.snippet then
-          comment.bufnr = bufnr
-          anchors.anchor(comment, where.start_line, where.end_line, where.start_col, where.end_col)
-          comment.state = nil
-          changed = true
-        elseif definitive then
-          comment.state = "inactive"
-          changed = true
-        end
+      if matches then
+        comment.bufnr = bufnr
+        anchors.anchor(comment, where.start_line, where.end_line, where.start_col, where.end_col)
+        comment.state = nil
+        changed = true
       elseif definitive then
         comment.state = "inactive"
         changed = true

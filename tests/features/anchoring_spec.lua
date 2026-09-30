@@ -192,6 +192,31 @@ describe("a file's comments", function()
     expect.equality(#views.anchored(), 2)
   end)
 
+  it("makes a reattached URI comment an orphan when its line is deleted", function()
+    local url = "review-test:///edited-after-attach.lua"
+    vim.cmd.enew()
+    vim.api.nvim_buf_set_name(0, url)
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "one", "two" })
+    vim.bo.bufhidden = "wipe"
+    vim.cmd("2Comment")
+    helpers.write("on two")
+    vim.cmd("enew!")
+    vim.api.nvim_buf_set_name(0, url)
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "one", "two" })
+    vim.api.nvim_exec_autocmds("BufEnter", { buffer = 0 })
+    vim.wait(0)
+    expect.equality(store.all()[#store.all()].state, nil)
+    local source_win = vim.api.nvim_get_current_win()
+    vim.cmd.CommentList()
+    vim.api.nvim_win_call(source_win, function()
+      vim.api.nvim_buf_set_lines(0, 1, 2, false, {})
+    end)
+    vim.wait(0)
+    expect.equality(#views.orphans(), 1)
+    local items = vim.fn.getqflist()
+    expect.equality(items[#items].text, "[orphaned] on two")
+  end)
+
   it("waits for a delayed URI read before reattaching", function()
     local url = "review-test:///later.lua"
     local pending
