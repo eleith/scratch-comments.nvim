@@ -57,13 +57,7 @@ throws your changes away. `<C-w>w` moves between the two parts, or scroll them w
 mouse.
 
 commented lines get a mark in the sign column: `│` for one line, and `╭` `│` `╰`
-down a range. to read the comment on the cursor line:
-
-```vim
-:CommentShow
-```
-
-browse every comment, then copy them all:
+down a range. browse your comments, then copy them all:
 
 ```vim
 :CommentList
@@ -84,10 +78,8 @@ it, pipe it to a command, or edit it:
 | Command | Does |
 | --- | --- |
 | `:Comment` | Comment on the current line or command range |
-| `:CommentShow` | Show the comment at the cursor, with the lines it's on. Edit it there and `:w` to save |
-| `:CommentNext` | Go to the next comment in the file |
-| `:CommentPrev` | Go to the previous comment in the file |
 | `:CommentList [filter]` | Put comments in the quickfix list and open it, fuzzy matching `filter` |
+| `:CommentDelete` | Delete the comment in the open card |
 | `:CommentExport[!] [format]` | Copy all comments to the clipboard as `markdown` (default) or `json`. `!` opens them in a scratch buffer |
 | `:CommentToggle [on\|off]` | Show or hide the comment signs |
 | `:CommentClear` | Delete every comment |
@@ -99,25 +91,20 @@ add your own, for example:
 ```lua
 vim.keymap.set("n", "<leader>ca", "<Cmd>Comment<CR>", { desc = "Comment on line" })
 vim.keymap.set("x", "<leader>ca", ":Comment<CR>", { desc = "Comment on selection" })
-vim.keymap.set("n", "<leader>cs", "<Cmd>CommentShow<CR>", { desc = "Show comments" })
-vim.keymap.set("n", "<leader>cn", "<Cmd>CommentNext<CR>", { desc = "Next comment" })
-vim.keymap.set("n", "<leader>cp", "<Cmd>CommentPrev<CR>", { desc = "Previous comment" })
 vim.keymap.set("n", "<leader>cl", "<Cmd>CommentList<CR>", { desc = "List comments" })
 vim.keymap.set("n", "<leader>cx", "<Cmd>CommentExport<CR>", { desc = "Copy comments" })
 ```
 
 ## browsing
 
-`:CommentNext` and `:CommentPrev` move between comments in the current file,
-wrapping at the ends. with a comment open, they show the next or previous
-comment in that window instead. save or discard your changes first.
-
-`:CommentList` puts all your comments in the quickfix list, so `]q` and `[q`
-move between them across files. while the list is open, the comment under the
-cursor is shown in a card above it. in the built-in list, press `<CR>` to go
-to a comment (even in a closed file), `e` to edit it, or `d` to delete it.
-give it an argument to list only the comments that fuzzy match it, in their
-text, snippet or path:
+`:CommentList` puts all your comments in the quickfix list. move through them
+with `j`/`k` to preview a card without moving the source cursor. `<CR>` jumps
+to the source when the comment has a location, and focuses the same card for
+editing. `:w` saves; `:CommentDelete` deletes the comment shown in a card,
+from either the card or the list. `<Esc>` dismisses a clean card in either
+place; unsaved edits need `:w` or `:q!`. an orphan has no line to jump to, so
+its editor returns to the list. give `:CommentList` an argument to fuzzy match
+comments by text, snippet or path:
 
 ```vim
 :CommentList typo
@@ -136,8 +123,8 @@ any quickfix viewer works:
 
 comments stay when you close a buffer (`:bd`, `:bw`). open the same source
 again and they'll pick up where they left off if the text is still on the same
-lines. delete one with `d` in the list, or save it empty from its comment
-window. `:CommentClear` deletes them all. to keep them after exiting neovim,
+lines. delete one with `:CommentDelete` while its card is open, or save its
+comment empty. `:CommentClear` deletes them all. to keep them after exiting neovim,
 export them to a file.
 
 the signs share the sign column with plugins like gitsigns, and can cover their
@@ -145,7 +132,8 @@ signs. `:CommentToggle` hides ours when you need to see theirs.
 
 if the lines a comment is on are deleted, it becomes an orphan. orphans are
 listed last in `:CommentList` and in an "Orphaned" section of the export. undo
-restores them while the buffer is open. delete one with `d` in the list.
+restores them while the buffer is open. delete one with `:CommentDelete`
+while its card is open.
 
 ## colors
 
@@ -173,9 +161,7 @@ vim.api.nvim_set_hl(0, "ScratchCommentBackdrop", { bg = "NONE" })
 local scratch = require("scratch_comments")
 
 scratch.add(start_line, end_line)  -- default: the cursor line
-scratch.show()
-scratch.next()
-scratch.prev()
+scratch.delete()                   -- comment in the open card
 scratch.list()
 scratch.render(format)             -- "markdown" (default) or "json"
 scratch.export(format, in_buffer)  -- copy, or open in a scratch buffer
@@ -201,8 +187,8 @@ vim.fn.writefile(vim.split(scratch.render(), "\n"), "review.md")
 plugin/scratch-comments.lua   the commands
 lua/scratch_comments/
   init.lua        the lua API
-  actions.lua     comment, show, delete, toggle, clear
-  navigate.lua    next and prev
+  actions.lua     add and edit comments, toggle signs, clear
+  list.lua        browse, navigate and delete comments
   comments.lua    changes comments and keeps the signs in sync
   location.lua    "line 3", "lines 3–5", "line 3, col 5–12"
   paths.lua       git root and relative paths

@@ -11,7 +11,8 @@ before_each(function()
   vim.cmd("1,3Comment")
   helpers.write("on one to three")
   vim.api.nvim_win_set_cursor(0, { 1, 0 })
-  vim.cmd("CommentShow")
+  vim.cmd.CommentList()
+  vim.cmd("normal \r")
 end)
 
 after_each(function()
@@ -117,7 +118,11 @@ describe("the comment window", function()
     end, helpers.every_float())
     expect.equality(#dim, 1)
     local config = vim.api.nvim_win_get_config(dim[1])
-    expect.equality({ config.width, config.height }, { vim.o.columns, vim.o.lines })
+    local qf_win = vim.fn.getqflist({ winid = 0 }).winid
+    expect.equality(
+      { config.width, config.height },
+      { vim.o.columns, vim.fn.win_screenpos(qf_win)[1] - 1 }
+    )
     expect.equality(config.zindex < vim.api.nvim_win_get_config(0).zindex, true)
     expect.equality(vim.wo[dim[1]].winblend, 60)
     vim.cmd("quit")
@@ -130,7 +135,8 @@ describe("the comment window", function()
     end
     vim.cmd("quit")
     local baseline = handlers()
-    vim.cmd("CommentShow")
+    vim.cmd.CommentList()
+    vim.cmd("normal \r")
     expect.equality(handlers() > baseline, true)
     vim.cmd("quit")
     expect.equality(handlers(), baseline)
@@ -156,13 +162,15 @@ describe("the border", function()
 
   it("is rounded when 'winborder' is not set", function()
     vim.o.winborder = ""
-    vim.cmd("CommentShow")
+    vim.cmd.CommentList()
+    vim.cmd("normal \r")
     expect.equality(vim.api.nvim_win_get_config(0).border[1], "╭")
   end)
 
   it("follows 'winborder' when it is set", function()
     vim.o.winborder = "single"
-    vim.cmd("CommentShow")
+    vim.cmd.CommentList()
+    vim.cmd("normal \r")
     expect.equality(vim.api.nvim_win_get_config(0).border[1], "┌")
   end)
 end)

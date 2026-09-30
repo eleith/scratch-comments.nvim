@@ -34,21 +34,20 @@ end
 ---@field comment_win integer
 ---@field comment_buf integer
 ---@field backdrop_win? integer
+---@field update fun(spec: ScratchFrame, preserve_comment?: boolean)
+---@field lines? integer preview area retained when focusing
+---@field backdrop? boolean preview dimming retained when focusing
 
 -- Two stacked floats, centered: the commented lines above, the comment below.
 ---@param frame ScratchFrame
 ---@return ScratchFramePanes
 function M.open(frame)
-  local comment_lines = vim.split(frame.comment, "\n")
-  local wanted_context = #frame.context
-  local wanted_comment = math.max(#comment_lines, 5)
-
   ---@return { width: integer, col: integer, row: integer, context: integer, comment: integer }
   local function layout()
     local lines = frame.lines or vim.o.lines
     local width = math.min(80, vim.o.columns - 4)
-    local context = math.min(wanted_context, math.floor(lines * 0.4))
-    local comment = math.min(wanted_comment, math.floor(lines * 0.3))
+    local context = math.min(#frame.context, math.floor(lines * 0.4))
+    local comment = math.min(math.max(#vim.split(frame.comment, "\n"), 5), math.floor(lines * 0.3))
     return {
       width = width,
       col = math.floor((vim.o.columns - width) / 2),
@@ -92,7 +91,7 @@ function M.open(frame)
     vim.tbl_extend("error", context_place, { border = border, style = "minimal" })
   )
 
-  local comment_buf = frame_buffer(comment_lines, "markdown")
+  local comment_buf = frame_buffer(vim.split(frame.comment, "\n"), "markdown")
   if frame.comment_name then
     vim.api.nvim_buf_set_name(
       comment_buf,
@@ -164,13 +163,37 @@ function M.open(frame)
     end,
   })
 
-  return {
+  local panes = {
     context_win = context_win,
     context_buf = context_buf,
     comment_win = comment_win,
     comment_buf = comment_buf,
     backdrop_win = dim,
   }
+  -- A preview can change entries or become an editor without replacing the
+  -- floating windows. Keep the same placement rule for either state.
+  function panes.update(spec, preserve_comment)
+    frame = spec
+    if preserve_comment then
+      spec.comment = table.concat(vim.api.nvim_buf_get_lines(comment_buf, 0, -1, false), "\n")
+    end
+    vim.bo[context_buf].modifiable = true
+    vim.api.nvim_buf_set_lines(context_buf, 0, -1, false, spec.context)
+    vim.bo[context_buf].modifiable = false
+    vim.bo[context_buf].modified = false
+    vim.bo[context_buf].filetype = spec.filetype
+    if not preserve_comment then
+      vim.bo[comment_buf].modifiable = true
+      vim.api.nvim_buf_set_lines(comment_buf, 0, -1, false, vim.split(spec.comment, "\n"))
+      vim.bo[comment_buf].modified = false
+      vim.bo[comment_buf].modifiable = false
+    end
+    backdrop.resize(dim, frame.lines)
+    local context_next, comment_next = placement(layout())
+    vim.api.nvim_win_set_config(context_win, context_next)
+    vim.api.nvim_win_set_config(comment_win, comment_next)
+  end
+  return panes
 end
 
 return M

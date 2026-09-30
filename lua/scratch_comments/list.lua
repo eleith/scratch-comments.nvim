@@ -15,6 +15,8 @@ local list_bufnr
 local active_filter
 local pending_jump = {}
 local listening = {}
+local dismissed_id
+local refresh
 
 ---@param comment ScratchComment|ScratchCommentView
 ---@return string
@@ -98,31 +100,80 @@ local function jump()
     notify.warn("This comment is gone")
     return
   end
-  if
-    comment.state == "inactive"
-    or (
-      comment.state == nil
-      and #vim.tbl_filter(function(c)
-        return c.id == id
-      end, views.orphans()) > 0
-    )
-  then
-    notify.warn("This comment no longer has a location")
+  if not window.close() then
+    notify.warn("Save or discard the comment first")
     return
   end
-  local ok = pcall(function()
-    vim.cmd(index .. "cc")
+  local qf_win = vim.api.nvim_get_current_win()
+  local entry = vim.iter(views.anchored()):find(function(view)
+    return view.id == id
+  end) or vim.iter(views.orphans()):find(function(view)
+    return view.id == id
   end)
-  if not ok then
-    notify.warn("Could not open the comment source")
+  if not entry then
+    notify.warn("This comment is gone")
     return
   end
-  local bufnr, win = vim.api.nvim_get_current_buf(), vim.api.nvim_get_current_win()
-  if vim.api.nvim_buf_get_name(bufnr) ~= comment.source_name then
+  -- Claim the visible panes before :cc triggers BufLeave on the quickfix list.
+  -- Enter changes focus and writeability, never the card's placement.
+  if preview.current_id() ~= id then
+    preview.show(entry.start_line and card.of(entry) or card.of_orphan(entry), id)
+  end
+  local panes = preview.take()
+  local owner = qf_win
+  local bufnr, win
+  if entry.start_line then
+    local ok = pcall(function()
+      vim.cmd(index .. "cc")
+    end)
+    if ok and vim.api.nvim_buf_get_name(0) == comment.source_name then
+      bufnr, win = vim.api.nvim_get_current_buf(), vim.api.nvim_get_current_win()
+      owner = win
+    else
+      notify.warn("Could not open the comment source")
+    end
+  end
+  local expected_id = list_id
+  if bufnr then
+    -- A completed read may invalidate a parked anchor while :cc opens it.
+    local resolved = vim.iter(views.orphans()):find(function(orphan)
+      return orphan.id == id
+    end)
+    if resolved then
+      entry = resolved
+      bufnr, win, owner = nil, nil, qf_win
+      vim.api.nvim_set_current_win(qf_win)
+    end
+  end
+  actions.show(entry, owner, panes, function()
+    vim.schedule(function()
+      if owner == qf_win and vim.fn.getqflist({ id = 0 }).id ~= expected_id then
+        return
+      end
+      if vim.api.nvim_win_is_valid(owner) then
+        vim.api.nvim_set_current_win(owner)
+      end
+    end)
+  end, function()
+    refresh(id, index, expected_id)
+  end)
+  if not bufnr or not win then
     return
   end
   local function position()
     if not vim.api.nvim_win_is_valid(win) or vim.api.nvim_win_get_buf(win) ~= bufnr then
+      return true
+    end
+    local active = window.current()
+    if
+      vim.api.nvim_get_current_win() ~= win
+      and not (
+        active
+        and active.id == id
+        and active.source_win == win
+        and vim.api.nvim_get_current_win() == active.comment_win
+      )
+    then
       return true
     end
     local current = by_id(id)
@@ -137,6 +188,12 @@ local function jump()
       return true
     end
     if current.state == "inactive" then
+      local open = window.current()
+      if open and open.id == id and open.update then
+        open.update(card.of_orphan(current))
+        open.source_win, owner = qf_win, qf_win
+        refresh(id, index, expected_id)
+      end
       notify.warn("This comment no longer has a location")
       return true
     end
@@ -148,15 +205,25 @@ local function jump()
   -- An async BufReadCmd may fill the buffer after :cc has already moved the
   -- cursor. Keep one listener per buffer even if the user jumps repeatedly.
   pending_jump[bufnr] = position
-  vim.api.nvim_create_autocmd("BufLeave", {
-    buffer = bufnr,
-    once = true,
-    callback = function()
-      if pending_jump[bufnr] == position then
-        pending_jump[bufnr] = nil
-      end
-    end,
-  })
+  local open = window.current()
+  if open then
+    vim.api.nvim_create_autocmd("BufLeave", {
+      buffer = vim.api.nvim_win_get_buf(open.comment_win),
+      once = true,
+      callback = function()
+        if pending_jump[bufnr] == position then
+          pending_jump[bufnr] = nil
+        end
+      end,
+    })
+  end
+  -- BufReadPost reattachment runs on the next scheduled turn. Recheck after
+  -- it, even if the file was fully populated before our on_lines listener.
+  vim.schedule(function()
+    if pending_jump[bufnr] == position and position() then
+      pending_jump[bufnr] = nil
+    end
+  end)
   if listening[bufnr] then
     return
   end
@@ -185,7 +252,7 @@ end
 ---@param id string
 ---@param index integer
 ---@param expected_id integer
-local function refresh(id, index, expected_id)
+refresh = function(id, index, expected_id)
   local qf = vim.fn.getqflist({ id = 0, winid = 0 })
   if qf.id ~= expected_id or qf.winid == 0 then
     return
@@ -211,33 +278,18 @@ local function refresh(id, index, expected_id)
   vim.api.nvim_win_set_cursor(qf.winid, { row, 0 })
 end
 
-local function edit_selected()
-  local index, id = selected()
-  if not index or not id or not by_id(id) then
-    notify.warn("This comment is gone")
-    return
-  end
-  local expected_id = list_id
-  actions.show_by_id(id, function()
-    vim.schedule(function()
-      local qf = vim.fn.getqflist({ id = 0, winid = 0 })
-      if qf.id == expected_id and qf.winid ~= 0 and vim.api.nvim_win_is_valid(qf.winid) then
-        vim.api.nvim_set_current_win(qf.winid)
-      end
-    end)
-  end, function()
-    refresh(id, index, expected_id)
-  end)
-end
-
-local function delete_selected()
-  local index, id = selected()
-  if not index then
-    notify.warn("Not a Scratch Comments list")
-    return
-  end
+-- Delete only the comment displayed in a card, never one inferred from the
+-- cursor in an arbitrary file or an unrelated quickfix list.
+function M.delete_open()
+  local open = window.current()
+  local index, selected_id = selected()
+  local id = open and open.id or (selected_id and preview.current_id())
   if not id then
-    notify.warn("This comment is gone")
+    notify.warn("No comment card open")
+    return
+  end
+  if open and vim.bo[vim.api.nvim_win_get_buf(open.comment_win)].modified then
+    notify.warn("Save or discard the comment first")
     return
   end
   local comment = by_id(id)
@@ -245,12 +297,42 @@ local function delete_selected()
     notify.warn("This comment is gone")
     return
   end
-  comments.delete(comment)
-  local anchored, orphans = filtered(active_filter)
-  if M.open(active_filter) then
-    vim.api.nvim_win_set_cursor(0, { math.min(index, #anchored + #orphans), 0 })
-    vim.api.nvim_exec_autocmds("CursorMoved", { buffer = 0 })
+  if not open then
+    preview.close()
+    dismissed_id = id
   end
+  comments.delete(comment)
+  notify.info("Deleted comment")
+  if index then
+    refresh(id, index, list_id)
+  elseif open and open.on_saved then
+    open.on_saved()
+  end
+  if open then
+    if index then
+      -- Deleting from the list leaves focus there, even if its card was focused.
+      window.close()
+    else
+      vim.api.nvim_win_close(open.comment_win, true)
+    end
+  end
+end
+
+local function escape()
+  local index, id = selected()
+  if not index then
+    return
+  end
+  if window.current() then
+    if not window.close() then
+      notify.warn("Save with :w, or discard with :q!")
+      return
+    end
+  end
+  if preview.is_open() then
+    preview.close()
+  end
+  dismissed_id = id
 end
 
 -- Every comment in the quickfix list, with the one under the cursor shown
@@ -261,7 +343,11 @@ function M.open(filter)
     notify.warn("Save or discard the comment first")
     return
   end
+  for bufnr in pairs(pending_jump) do
+    pending_jump[bufnr] = nil
+  end
   active_filter = filter
+  dismissed_id = nil
   local anchored, orphans = filtered(filter)
   if #anchored + #orphans == 0 then
     if list_id and vim.fn.getqflist({ id = 0 }).id == list_id then
@@ -274,6 +360,10 @@ function M.open(filter)
     return false
   end
   list_id = quickfix.list(anchored, orphans, function(index)
+    if not index then
+      preview.close()
+      return
+    end
     local qf = vim.fn.getqflist({ items = 1 })
     local data = index and qf.items[index] and qf.items[index].user_data
     local id = data and data.scratch_comments_id
@@ -281,15 +371,21 @@ function M.open(filter)
       and vim.iter(views.anchored()):find(function(view)
         return view.id == id
       end)
+    if id ~= dismissed_id then
+      dismissed_id = nil
+    end
+    if window.current() or dismissed_id == id then
+      return
+    end
     if entry then
-      preview.show(card.of(entry))
+      preview.show(card.of(entry), id)
     else
       local orphan = id
         and vim.iter(views.orphans()):find(function(comment)
           return comment.id == id
         end)
       if orphan then
-        preview.show(card.of_orphan(orphan))
+        preview.show(card.of_orphan(orphan), id)
       else
         preview.close()
       end
@@ -299,9 +395,8 @@ function M.open(filter)
     return
   end
   list_bufnr = vim.api.nvim_get_current_buf()
-  vim.keymap.set("n", "<CR>", jump, { buffer = list_bufnr, desc = "Jump to comment" })
-  vim.keymap.set("n", "d", delete_selected, { buffer = list_bufnr, desc = "Delete comment" })
-  vim.keymap.set("n", "e", edit_selected, { buffer = list_bufnr, desc = "Edit comment" })
+  vim.keymap.set("n", "<CR>", jump, { buffer = list_bufnr, desc = "Jump and edit comment" })
+  vim.keymap.set("n", "<Esc>", escape, { buffer = list_bufnr, desc = "Dismiss comment card" })
   return true
 end
 

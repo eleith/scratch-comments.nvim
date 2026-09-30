@@ -19,14 +19,16 @@ describe(":Comment", function()
     expect.equality(views.anchored()[1].comment, "first comment")
   end)
 
-  it("on the same line edits that comment instead of adding one", function()
+  it("does not duplicate a comment on the same range", function()
     vim.cmd("Comment")
     helpers.write("first comment")
     vim.cmd("Comment")
-    expect.equality(helpers.text(), "first comment")
-    helpers.write("edited comment")
     expect.equality(#store.all(), 1)
-    expect.equality(views.anchored()[1].comment, "edited comment")
+    expect.equality(#helpers.floats(), 0)
+    expect.equality(
+      helpers.notified()[#helpers.notified()],
+      "This range already has a comment; edit it from :CommentList"
+    )
   end)
 
   it("on a range adds a separate comment over those lines", function()

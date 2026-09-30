@@ -23,15 +23,19 @@ local mode_names = {
 ---@field comment_win? integer
 ---@field on_close? fun()
 ---@field on_saved? fun()
----@field from_list? boolean
+---@field update? fun(spec: ScratchFrame)
 
 ---@type ScratchCommentWindow?
 local current
 
 ---@param spec ScratchFrame
 ---@param record ScratchCommentWindow
-function M.open(spec, record)
-  preview.close()
+---@param panes? ScratchFramePanes existing preview panes to focus in place
+function M.open(spec, record, panes)
+  local promoted = panes ~= nil
+  if not panes then
+    preview.close()
+  end
   spec.on_close = function()
     if current and current.comment_win == record.comment_win then
       current = nil
@@ -45,8 +49,22 @@ function M.open(spec, record)
     or "comment"
   local source_name = vim.fn.fnamemodify(source_buffer_name, ":t")
   spec.comment_name = source_name .. ":" .. record.line .. " [comment]"
-  local panes = frame.open(spec)
+  if panes then
+    spec.lines = panes.lines
+    spec.backdrop = panes.backdrop
+    panes.update(spec)
+  else
+    panes = frame.open(spec)
+  end
   local comment_win, comment_buf = panes.comment_win, panes.comment_buf
+  if promoted then
+    vim.api.nvim_buf_set_name(
+      comment_buf,
+      "scratch-comments://" .. comment_buf .. "/" .. spec.comment_name
+    )
+    vim.bo[comment_buf].modifiable = true
+    vim.api.nvim_set_current_win(comment_win)
+  end
   record.comment_win = comment_win
   current = record
 
@@ -60,6 +78,15 @@ function M.open(spec, record)
       })
       vim.cmd.redraw()
     end
+  end
+  record.update = function(next_spec)
+    next_spec.on_close = spec.on_close
+    next_spec.on_save = spec.on_save
+    next_spec.lines = spec.lines
+    next_spec.backdrop = spec.backdrop
+    panes.update(next_spec, true)
+    spec = next_spec
+    show_mode()
   end
   show_mode()
   vim.api.nvim_create_autocmd("ModeChanged", { buffer = comment_buf, callback = show_mode })

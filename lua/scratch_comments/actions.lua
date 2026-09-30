@@ -10,12 +10,6 @@ local window = require("scratch_comments.ui.window")
 
 local M = {}
 
----@param text string
----@return string
-local function summary(text)
-  return vim.split(text, "\n")[1]
-end
-
 ---@param bufnr integer
 ---@param start_line integer
 ---@param end_line integer
@@ -46,14 +40,6 @@ local function selected_columns(start_line, end_line)
   return from[3] - 1, end_col
 end
 
----@return ScratchCommentView[]
-local function cursor_comments()
-  local line = vim.api.nvim_win_get_cursor(0)[1]
-  return vim.tbl_filter(function(view)
-    return view.start_line <= line and line <= view.end_line
-  end, views.in_buffer(vim.api.nvim_get_current_buf()))
-end
-
 ---@param id string
 ---@param text string
 ---@return boolean|string? "deleted" when saving removes the comment
@@ -76,10 +62,10 @@ end
 
 ---@param view ScratchComment|ScratchCommentView
 ---@param source_win integer
+---@param panes ScratchFramePanes? visible preview to focus
 ---@param on_close? fun()
 ---@param on_saved? fun()
----@param from_list? boolean
-function M.show(view, source_win, on_close, on_saved, from_list)
+function M.show(view, source_win, panes, on_close, on_saved)
   local frame
   if view.start_line then
     frame = card.of(view --[[@as ScratchCommentView]])
@@ -97,24 +83,7 @@ function M.show(view, source_win, on_close, on_saved, from_list)
     source_win = source_win,
     on_close = on_close,
     on_saved = on_saved,
-    from_list = from_list,
-  })
-end
-
----@param id string
----@param on_close? fun()
----@param on_saved? fun()
-function M.show_by_id(id, on_close, on_saved)
-  local view = vim.iter(views.anchored()):find(function(entry)
-    return entry.id == id
-  end) or vim.iter(views.orphans()):find(function(entry)
-    return entry.id == id
-  end)
-  if view then
-    M.show(view, vim.api.nvim_get_current_win(), on_close, on_saved, true)
-  else
-    notify.warn("This comment is gone")
-  end
+  }, panes)
 end
 
 -- Opens an editor for a comment that does not exist yet; it is created when
@@ -178,43 +147,11 @@ function M.comment(start_line, end_line, use_selection)
   local existing =
     find_anchor(bufnr, where.start_line, where.end_line, where.start_col, where.end_col)
   if existing then
-    M.show(existing, vim.api.nvim_get_current_win())
+    notify.info("This range already has a comment; edit it from :CommentList")
     return
   end
 
   edit_new(bufnr, paths.is_uri(name) and name or vim.fn.fnamemodify(name, ":p"), where)
-end
-
----@param view ScratchCommentView
----@return string
-local function describe(view)
-  return location.describe(view) .. ": " .. summary(view.comment)
-end
-
----@param candidates ScratchCommentView[]
----@param callback fun(view: ScratchCommentView)
-local function choose(candidates, callback)
-  if #candidates == 1 then
-    callback(candidates[1])
-    return
-  end
-  vim.ui.select(candidates, { prompt = "Comment: ", format_item = describe }, function(view)
-    if view then
-      callback(view)
-    end
-  end)
-end
-
-function M.show_current()
-  local at_cursor = cursor_comments()
-  if #at_cursor == 0 then
-    notify.info("No comment at cursor")
-    return
-  end
-  local source_win = vim.api.nvim_get_current_win()
-  choose(at_cursor, function(view)
-    M.show(view, source_win)
-  end)
 end
 
 ---@param on? boolean
