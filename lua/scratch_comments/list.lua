@@ -10,6 +10,7 @@ local M = {}
 
 local list_id
 local list_bufnr
+local list_win
 local active_filter
 local pending_jump = {}
 local listening = {}
@@ -61,6 +62,21 @@ local function by_id(id)
   return vim.iter(store.all()):find(function(comment)
     return comment.id == id
   end)
+end
+
+---@param expected_id integer?
+---@return integer?
+local function manager_window(expected_id)
+  if
+    not expected_id
+    or vim.fn.getqflist({ id = 0 }).id ~= expected_id
+    or not list_win
+    or not vim.api.nvim_win_is_valid(list_win)
+    or vim.api.nvim_win_get_buf(list_win) ~= list_bufnr
+  then
+    return nil
+  end
+  return list_win
 end
 
 ---@return integer?, string?
@@ -209,18 +225,18 @@ end
 ---@param index integer
 ---@param expected_id integer
 refresh = function(id, index, expected_id)
-  local qf = vim.fn.getqflist({ id = 0, winid = 0 })
-  if qf.id ~= expected_id or qf.winid == 0 then
+  local qf_win = manager_window(expected_id)
+  if not qf_win then
     return
   end
   local anchored, orphans = filtered(active_filter)
   local items = quickfix.items(anchored, orphans)
   vim.fn.setqflist({}, "r", { title = "Comments", items = items })
   if #items == 0 then
-    vim.api.nvim_win_call(qf.winid, function()
+    vim.api.nvim_win_call(qf_win, function()
       vim.cmd.cclose()
     end)
-    list_id, list_bufnr = nil, nil
+    list_id, list_bufnr, list_win = nil, nil, nil
     return
   end
   local row = math.min(index, #items)
@@ -230,19 +246,20 @@ refresh = function(id, index, expected_id)
       break
     end
   end
-  vim.api.nvim_win_set_cursor(qf.winid, { row, 0 })
+  vim.api.nvim_win_set_cursor(qf_win, { row, 0 })
 end
 
 -- A card opened from a source window may also change a visible manager list.
 ---@param id? string
 function M.refresh_comment(id)
-  local qf = vim.fn.getqflist({ id = 0, winid = 0 })
-  if list_id and qf.id == list_id and qf.winid ~= 0 then
-    local row = vim.api.nvim_win_get_cursor(qf.winid)[1]
-    local item = vim.fn.getqflist({ items = 1 }).items[row]
-    local selected_id = item and item.user_data and item.user_data.scratch_comments_id
-    refresh(selected_id or id or "", row, list_id)
+  local qf_win = manager_window(list_id)
+  if not qf_win then
+    return
   end
+  local row = vim.api.nvim_win_get_cursor(qf_win)[1]
+  local item = vim.fn.getqflist({ items = 1 }).items[row]
+  local selected_id = item and item.user_data and item.user_data.scratch_comments_id
+  refresh(selected_id or id or "", row, list_id)
 end
 
 -- Recheck a pending navigation after reattachment, which can happen after
@@ -285,16 +302,27 @@ function M.edit_selected()
     return true
   end
   local qf_win = vim.api.nvim_get_current_win()
+  local tab = vim.api.nvim_get_current_tabpage()
   local expected_id = list_id
+  local parent_win
   actions.show(entry, qf_win, function()
     vim.schedule(function()
-      if vim.fn.getqflist({ id = 0 }).id == expected_id and vim.api.nvim_win_is_valid(qf_win) then
+      local focused = vim.api.nvim_get_current_win()
+      if
+        vim.api.nvim_get_current_tabpage() == tab
+        and (focused == parent_win or focused == qf_win)
+        and manager_window(expected_id) == qf_win
+      then
         vim.api.nvim_set_current_win(qf_win)
       end
     end)
   end, function()
     refresh(id, index, expected_id)
   end)
+  local open = window.current()
+  if open and open.id == id then
+    parent_win = vim.api.nvim_win_get_config(open.comment_win).win
+  end
   return true
 end
 
@@ -362,11 +390,14 @@ function M.open(filter)
   active_filter = filter
   local anchored, orphans = filtered(filter)
   if #anchored + #orphans == 0 then
-    if list_id and vim.fn.getqflist({ id = 0 }).id == list_id then
+    local qf_win = manager_window(list_id)
+    if qf_win then
       vim.fn.setqflist({}, "r", { items = {} })
-      vim.cmd.cclose()
+      vim.api.nvim_win_call(qf_win, function()
+        vim.cmd.cclose()
+      end)
     end
-    list_id, list_bufnr = nil, nil
+    list_id, list_bufnr, list_win = nil, nil, nil
     notify.info("No comments")
     return false
   end
@@ -375,6 +406,7 @@ function M.open(filter)
     return
   end
   list_bufnr = vim.api.nvim_get_current_buf()
+  list_win = vim.api.nvim_get_current_win()
   vim.keymap.set("n", "<CR>", jump, { buffer = list_bufnr, desc = "Jump to comment source" })
   vim.keymap.set("n", "<Esc>", escape, { buffer = list_bufnr, desc = "Dismiss comment card" })
   return true
