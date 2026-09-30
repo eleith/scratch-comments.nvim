@@ -147,7 +147,7 @@ function M.comment(start_line, end_line, use_selection)
   local existing =
     find_anchor(bufnr, where.start_line, where.end_line, where.start_col, where.end_col)
   if existing then
-    notify.info("This range already has a comment; edit it from :CommentList")
+    M.show(existing, vim.api.nvim_get_current_win())
     return
   end
 

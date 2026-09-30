@@ -34,7 +34,8 @@ Requires Neovim 0.12 or newer.
                         gives ":'<,'>Comment". A characterwise selection
                         (|v|) comments on just the selected text. A linewise
                         one (|V|) comments on whole lines. If that exact text
-                        already has a comment, use |:CommentList| to edit it.
+                        already has a comment, open it for editing instead of
+                        adding a duplicate.
 
                         A window opens in the middle of the screen: the lines
                         you are commenting on at the top, your comment below.
@@ -90,8 +91,8 @@ Requires Neovim 0.12 or newer.
 A comment belongs to a file and a range of lines, or to the exact text you
 selected within them.
 
-- Commenting on the same lines again does not add a duplicate; edit it from
-  |:CommentList|.
+- Commenting on the same lines again opens that comment for editing instead
+  of adding a duplicate.
 - Commenting on different lines adds a new comment, even if the lines overlap
   another comment. A comment on lines 10–30 and one on line 14 are separate.
 

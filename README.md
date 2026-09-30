@@ -54,7 +54,7 @@ at the top and your comment below. a new comment opens in insert mode, and the
 title shows the mode you're in. write as many lines as you like, then `:wq` to
 save. `:q` or `<Esc>` closes it if you haven't changed anything, and `:q!`
 throws your changes away. `<C-w>w` moves between the two parts, or scroll them with the
-mouse.
+mouse. commenting on an exact range again opens its comment for editing.
 
 commented lines get a mark in the sign column: `│` for one line, and `╭` `│` `╰`
 down a range. browse your comments, then copy them all:
@@ -77,7 +77,7 @@ it, pipe it to a command, or edit it:
 
 | Command | Does |
 | --- | --- |
-| `:Comment` | Comment on the current line or command range |
+| `:Comment` | Add a comment on the current line or range, or edit one already on that exact range |
 | `:CommentList [filter]` | Put comments in the quickfix list and open it, fuzzy matching `filter` |
 | `:CommentDelete` | Delete the comment in the open card |
 | `:CommentExport[!] [format]` | Copy all comments to the clipboard as `markdown` (default) or `json`. `!` opens them in a scratch buffer |
