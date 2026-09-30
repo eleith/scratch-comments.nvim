@@ -6,11 +6,14 @@ local M = {}
 ---@param view ScratchCommentView
 ---@return ScratchFrame
 function M.of(view)
-  local in_file = views.in_buffer(view.bufnr)
+  local in_file = vim.tbl_filter(function(candidate)
+    return candidate.source_name == view.source_name
+  end, views.anchored())
   return {
     title = location.title(view.file_path, view),
     context = vim.split(view.snippet, "\n"),
-    filetype = vim.bo[view.bufnr].filetype,
+    filetype = view.bufnr and vim.api.nvim_buf_is_valid(view.bufnr) and vim.bo[view.bufnr].filetype
+      or "",
     comment = view.comment,
     comment_title = ("comment (%d of %d)"):format(views.index_of(in_file, view.id) or 0, #in_file),
   }

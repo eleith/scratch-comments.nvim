@@ -54,7 +54,7 @@ function M.open(filter)
     local entry = index and listed[index]
     if not entry then
       preview.close()
-    elseif entry.snippet then
+    elseif entry.start_line then
       preview.show(card.of(entry))
     else
       preview.show(card.of_orphan(entry))

@@ -2,8 +2,12 @@ local M = {}
 
 ---@class ScratchComment
 ---@field id string
----@field bufnr integer
+---@field bufnr? integer
 ---@field extmark_id? integer
+---@field source_name string
+---@field last_location ScratchLocation
+---@field snippet string
+---@field state? "parked"|"inactive" nil while attached
 ---@field comment string
 ---@field file_path string
 ---@field relative_path string
@@ -13,12 +17,15 @@ local M = {}
 local comments = {}
 local next_id = 1
 
----@param fields { bufnr: integer, comment: string, file_path: string, relative_path: string, charwise?: boolean }
+---@param fields { bufnr: integer, comment: string, file_path: string, relative_path: string, source_name?: string, last_location?: ScratchLocation, snippet?: string, charwise?: boolean }
 ---@return ScratchComment
 function M.add(fields)
   local comment = {
     id = "comment-" .. next_id,
     bufnr = fields.bufnr,
+    source_name = fields.source_name or fields.file_path,
+    last_location = fields.last_location or { start_line = 1, end_line = 1 },
+    snippet = fields.snippet or "",
     comment = fields.comment,
     file_path = fields.file_path,
     relative_path = fields.relative_path,

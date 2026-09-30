@@ -46,13 +46,20 @@ end
 function M.anchored()
   local views = {}
   for _, comment in ipairs(store.all()) do
-    local start_line, end_line, start_col, end_col = anchors.range(comment)
+    local start_line, end_line, start_col, end_col
+    if comment.state == "parked" then
+      local where = comment.last_location
+      start_line, end_line = where.start_line, where.end_line
+      start_col, end_col = where.start_col, where.end_col
+    elseif comment.state ~= "inactive" then
+      start_line, end_line, start_col, end_col = anchors.range(comment)
+    end
     if start_line and end_line then
       local view = vim.deepcopy(comment) --[[@as ScratchCommentView]]
       view.start_line, view.end_line = start_line, end_line
       view.start_col, view.end_col = start_col, end_col
-      view.snippet =
-        table.concat(M.text(comment.bufnr, start_line, end_line, start_col, end_col), "\n")
+      view.snippet = comment.state == "parked" and comment.snippet
+        or table.concat(M.text(comment.bufnr, start_line, end_line, start_col, end_col), "\n")
       table.insert(views, view)
     end
   end
@@ -81,7 +88,9 @@ end
 
 ---@return ScratchComment[]
 function M.orphans()
-  return vim.tbl_filter(anchors.is_orphaned, store.all())
+  return vim.tbl_filter(function(comment)
+    return comment.state == "inactive" or (comment.state == nil and anchors.is_orphaned(comment))
+  end, store.all())
 end
 
 return M

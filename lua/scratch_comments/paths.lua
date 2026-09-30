@@ -1,5 +1,13 @@
 local M = {}
 
+-- Buffer names may be virtual URIs rather than filesystem paths. Recognize
+-- the URI scheme, not any particular provider's prefix.
+---@param name string
+---@return boolean
+function M.is_uri(name)
+  return name:match("^%w[%w+.-]*://") ~= nil
+end
+
 local function run(args)
   local result = vim.system(args, { text = true }):wait()
   if result.code == 0 then
