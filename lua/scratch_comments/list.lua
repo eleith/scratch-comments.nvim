@@ -11,10 +11,12 @@ local M = {}
 local list_id
 local list_bufnr
 local list_win
+local list_tab
 local active_filter
 local pending_jump = {}
 local listening = {}
 local refresh
+local bind_list
 
 ---@param comment ScratchComment|ScratchCommentView
 ---@return string
@@ -67,27 +69,42 @@ end
 ---@param expected_id integer?
 ---@return integer?
 local function manager_window(expected_id)
-  if
-    not expected_id
-    or vim.fn.getqflist({ id = 0 }).id ~= expected_id
-    or not list_win
-    or not vim.api.nvim_win_is_valid(list_win)
-    or vim.api.nvim_win_get_buf(list_win) ~= list_bufnr
-  then
+  if not expected_id or vim.fn.getqflist({ id = 0 }).id ~= expected_id then
     return nil
   end
-  return list_win
+  if
+    list_win
+    and vim.api.nvim_win_is_valid(list_win)
+    and vim.api.nvim_win_get_buf(list_win) == list_bufnr
+  then
+    return list_win
+  end
+  if not list_tab or not vim.api.nvim_tabpage_is_valid(list_tab) then
+    return nil
+  end
+  -- :cclose followed by :copen can give the same list a new window/buffer.
+  for _, win in ipairs(vim.api.nvim_tabpage_list_wins(list_tab)) do
+    local bufnr = vim.api.nvim_win_get_buf(win)
+    if
+      vim.api.nvim_win_get_config(win).relative == ""
+      and vim.bo[bufnr].buftype == "quickfix"
+      and vim.fn.getwininfo(win)[1].loclist == 0
+    then
+      if bufnr ~= list_bufnr and bind_list then
+        bind_list(bufnr)
+      end
+      list_win, list_bufnr = win, bufnr
+      return win
+    end
+  end
 end
 
 ---@return integer?, string?
 local function selected()
-  if vim.api.nvim_get_current_buf() ~= list_bufnr then
+  if vim.bo.buftype ~= "quickfix" or vim.api.nvim_get_current_win() ~= manager_window(list_id) then
     return nil
   end
-  local qf = vim.fn.getqflist({ id = 0, items = 1 })
-  if qf.id ~= list_id then
-    return nil
-  end
+  local qf = vim.fn.getqflist({ items = 1 })
   local index = vim.api.nvim_win_get_cursor(0)[1]
   local data = qf.items[index] and qf.items[index].user_data
   return index, data and data.scratch_comments_id
@@ -236,7 +253,7 @@ refresh = function(id, index, expected_id)
     vim.api.nvim_win_call(qf_win, function()
       vim.cmd.cclose()
     end)
-    list_id, list_bufnr, list_win = nil, nil, nil
+    list_id, list_bufnr, list_win, list_tab = nil, nil, nil, nil
     return
   end
   local row = math.min(index, #items)
@@ -377,6 +394,20 @@ local function escape()
   end
 end
 
+bind_list = function(bufnr)
+  vim.keymap.set("n", "<CR>", jump, { buffer = bufnr, desc = "Jump to comment source" })
+  vim.keymap.set("n", "<Esc>", escape, { buffer = bufnr, desc = "Dismiss comment card" })
+end
+
+vim.api.nvim_create_autocmd({ "WinEnter", "BufWinEnter" }, {
+  group = vim.api.nvim_create_augroup("scratch_comments_list", { clear = true }),
+  callback = function()
+    if vim.bo.buftype == "quickfix" and vim.api.nvim_get_current_tabpage() == list_tab then
+      manager_window(list_id)
+    end
+  end,
+})
+
 -- Open the quickfix list without moving the source cursor or showing a card.
 ---@param filter? string only comments matching this
 function M.open(filter)
@@ -397,7 +428,7 @@ function M.open(filter)
         vim.cmd.cclose()
       end)
     end
-    list_id, list_bufnr, list_win = nil, nil, nil
+    list_id, list_bufnr, list_win, list_tab = nil, nil, nil, nil
     notify.info("No comments")
     return false
   end
@@ -407,8 +438,8 @@ function M.open(filter)
   end
   list_bufnr = vim.api.nvim_get_current_buf()
   list_win = vim.api.nvim_get_current_win()
-  vim.keymap.set("n", "<CR>", jump, { buffer = list_bufnr, desc = "Jump to comment source" })
-  vim.keymap.set("n", "<Esc>", escape, { buffer = list_bufnr, desc = "Dismiss comment card" })
+  list_tab = vim.api.nvim_get_current_tabpage()
+  bind_list(list_bufnr)
   return true
 end
 
