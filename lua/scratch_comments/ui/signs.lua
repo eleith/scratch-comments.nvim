@@ -4,10 +4,12 @@ local M = {}
 
 local namespace = vim.api.nvim_create_namespace("scratch_comments_signs")
 local group = "ScratchCommentSign"
+local highlight_group = "ScratchCommentHighlight"
 local signs = { single = "│", first = "╭", middle = "│", last = "╰" }
 local visible = true
 
 vim.api.nvim_set_hl(0, group, { link = "Todo", default = true })
+vim.api.nvim_set_hl(0, highlight_group, { link = "Todo", default = true })
 
 ---@return boolean
 function M.is_visible()
@@ -42,8 +44,15 @@ function M.draw(bufnr, comments)
     return
   end
   for _, comment in ipairs(comments) do
-    local start_line, end_line = anchors.range(comment)
+    local start_line, end_line, start_col, end_col = anchors.range(comment)
     if start_line and end_line then
+      if start_col ~= nil then
+        vim.api.nvim_buf_set_extmark(bufnr, namespace, start_line - 1, start_col, {
+          end_row = end_line - 1,
+          end_col = end_col,
+          hl_group = highlight_group,
+        })
+      end
       if start_line == end_line then
         sign(bufnr, signs.single, start_line)
       else

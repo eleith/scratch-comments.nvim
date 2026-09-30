@@ -11,6 +11,10 @@ describe("signs", function()
     vim.cmd("1Comment")
     helpers.write("on one")
     expect.equality(helpers.sign_at(1), "│")
+    local namespace = vim.api.nvim_get_namespaces().scratch_comments_signs
+    for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(0, namespace, 0, -1, { details = true })) do
+      expect.equality(mark[4].hl_group, nil)
+    end
   end)
 
   it("mark a range from its first line to its last", function()

@@ -57,7 +57,8 @@ throws your changes away. `<C-w>w` moves between the two parts, or scroll them w
 mouse. commenting on an exact range again opens its comment for editing.
 
 commented lines get a mark in the sign column: `│` for one line, and `╭` `│` `╰`
-down a range. browse your comments, then copy them all:
+down a range. characterwise selections also highlight the commented text; whole-line
+comments only get signs. browse your comments, then copy them all:
 
 ```vim
 :CommentList
@@ -81,7 +82,7 @@ it, pipe it to a command, or edit it:
 | `:CommentList [filter]` | Put comments in the quickfix list and open it, fuzzy matching `filter` |
 | `:CommentDelete` | Delete the cursor row in the built-in quickfix list, or the open card elsewhere |
 | `:CommentExport[!] [format]` | Copy all comments to the clipboard as `markdown` (default) or `json`. `!` opens them in a scratch buffer |
-| `:CommentToggle [on\|off]` | Show or hide the comment signs |
+| `:CommentToggle [on\|off]` | Show or hide the comment signs and text highlights |
 | `:CommentClear` | Delete every comment |
 
 ## mappings
@@ -139,6 +140,8 @@ list with `:CommentDelete`, or from its open card.
 ## colors
 
 `ScratchCommentSign` colors the signs (linked to `Todo` by default).
+`ScratchCommentHighlight` colors commented text ranges (also linked to `Todo`
+by default). override either group to use your own colors.
 `ScratchCommentBackdrop` dims the editor behind an open comment card
 (black at 60% blend by default).
 
@@ -147,6 +150,7 @@ modes. for example, inside Modus's `on_highlights`:
 
 ```lua
 hl.ScratchCommentSign = { fg = c.fg_main, bg = c.bg_yellow_intense, bold = true }
+hl.ScratchCommentHighlight = { bg = c.bg_yellow_intense }
 hl.ScratchCommentBackdrop = { bg = c.bg_dim }
 ```
 

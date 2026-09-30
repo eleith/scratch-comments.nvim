@@ -84,9 +84,9 @@ Requires Neovim 0.12 or newer.
                         command with |:w_c|, or filter them with |:range!|.
 
                                                               *:CommentToggle*
-:CommentToggle [on|off] Show or hide the comment signs, or toggle them with no
-                        argument. The comments stay and keep following your
-                        edits.
+:CommentToggle [on|off] Show or hide the comment signs and text highlights,
+                        or toggle them with no argument. The comments stay
+                        and keep following your edits.
 
                                                                *:CommentClear*
 :CommentClear           Delete every comment.
@@ -132,7 +132,9 @@ In tmux you may need to set the clipboard to OSC 52 yourself: >lua
 
 Each commented line gets a sign: "│" for a one-line comment, and "╭", "│", "╰"
 down a range. The signs share the column with plugins like gitsigns and can
-cover their signs. |:CommentToggle| hides ours when you need to see theirs.
+cover their signs. Characterwise selections also highlight the commented text;
+whole-line comments only get signs. |:CommentToggle| hides both decorations
+when you need to see other signs or the underlying text.
 
                                                          *ScratchCommentSign*
 The signs use ScratchCommentSign, which links to |hl-Todo|. To change it: >lua
@@ -140,6 +142,11 @@ The signs use ScratchCommentSign, which links to |hl-Todo|. To change it: >lua
       fg = "#2fafff",
       bg = "#004065",
     })
+<
+                                                    *ScratchCommentHighlight*
+Selected text uses ScratchCommentHighlight, which links to |hl-Todo| by
+default. To change it: >lua
+    vim.api.nvim_set_hl(0, "ScratchCommentHighlight", { bg = "#004065" })
 <
                                                      *ScratchCommentBackdrop*
 The editor dims behind the comment window, with ScratchCommentBackdrop over

@@ -8,6 +8,19 @@ local function select(keys)
   vim.cmd("normal! " .. keys .. "\27")
 end
 
+-- Only the text decorations, not the signs or tracking anchors.
+local function highlights()
+  local namespace = vim.api.nvim_get_namespaces().scratch_comments_signs
+  local ranges = {}
+  for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(0, namespace, 0, -1, { details = true })) do
+    local details = assert(mark[4])
+    if details.hl_group then
+      table.insert(ranges, { mark[2], mark[3], details.end_row, details.end_col, details.hl_group })
+    end
+  end
+  return ranges
+end
+
 local function lines_title()
   return helpers.title((helpers.panes()))
 end
@@ -34,6 +47,12 @@ describe("a charwise selection", function()
     expect.equality(quick.snippet, "quick")
     expect.equality(quick.start_col, 4)
     expect.equality(quick.end_col, 9)
+  end)
+
+  it("highlights only the selected text and also shows a sign", function()
+    helpers.write("on quick")
+    expect.equality(highlights(), { { 0, 4, 0, 9, "ScratchCommentHighlight" } })
+    expect.equality(helpers.sign_at(1), "│")
   end)
 
   it("opens an existing comment on the exact selection for editing", function()
@@ -77,6 +96,31 @@ describe("a span", function()
   it("follows its text", function()
     vim.api.nvim_buf_set_text(0, 0, 4, 0, 4, { "very " })
     expect.equality(current().snippet, "quick")
+    helpers.text_changed()
+    expect.equality(highlights(), { { 0, 9, 0, 14, "ScratchCommentHighlight" } })
+  end)
+
+  it("hides and restores both decorations with :CommentToggle", function()
+    vim.cmd("CommentToggle off")
+    expect.equality(highlights(), {})
+    expect.equality(helpers.sign_at(1), nil)
+    vim.cmd("CommentToggle on")
+    expect.equality(highlights(), { { 0, 4, 0, 9, "ScratchCommentHighlight" } })
+    expect.equality(helpers.sign_at(1), "│")
+  end)
+
+  it("removes both decorations when cleared", function()
+    vim.cmd("CommentClear")
+    expect.equality(highlights(), {})
+    expect.equality(helpers.sign_at(1), nil)
+  end)
+
+  it("removes both decorations when deleted", function()
+    vim.cmd("CommentList")
+    vim.cmd("CommentDelete")
+    vim.cmd("cclose")
+    expect.equality(highlights(), {})
+    expect.equality(helpers.sign_at(1), nil)
   end)
 
   it("is orphaned when its text is replaced, and restored by undo", function()
@@ -84,9 +128,15 @@ describe("a span", function()
     vim.api.nvim_buf_set_text(0, 0, 4, 0, 9, { "slow" })
     expect.equality(current(), nil)
     expect.equality(#views.orphans(), 1)
+    helpers.text_changed()
+    expect.equality(highlights(), {})
+    expect.equality(helpers.sign_at(1), nil)
     helpers.undo_break()
     vim.cmd("silent undo")
     expect.equality(current().snippet, "quick")
+    helpers.text_changed()
+    expect.equality(highlights(), { { 0, 4, 0, 9, "ScratchCommentHighlight" } })
+    expect.equality(helpers.sign_at(1), "│")
   end)
 
   it("is listed in quickfix with its columns", function()
@@ -110,6 +160,7 @@ describe("a selection", function()
     vim.cmd("'<,'>Comment")
     helpers.write("on café")
     expect.equality(views.anchored()[1].snippet, "café")
+    expect.equality(highlights(), { { 1, 0, 1, 5, "ScratchCommentHighlight" } })
   end)
 
   it("to $ ends at the end of the line", function()
@@ -127,6 +178,9 @@ describe("a selection", function()
     expect.equality(lines_title(), " spans.md [lines 3:5–4:5] ")
     helpers.write("across lines")
     expect.equality(views.anchored()[1].snippet, "two\nthree")
+    expect.equality(highlights(), { { 2, 4, 3, 5, "ScratchCommentHighlight" } })
+    expect.equality(helpers.sign_at(3), "╭")
+    expect.equality(helpers.sign_at(4), "╰")
   end)
 
   it("that is linewise makes a line comment", function()
@@ -137,6 +191,8 @@ describe("a selection", function()
     helpers.write("whole line")
     expect.equality(views.anchored()[1].start_col, nil)
     expect.equality(views.anchored()[1].snippet, "one two")
+    expect.equality(highlights(), {})
+    expect.equality(helpers.sign_at(3), "│")
   end)
 end)
 

@@ -76,7 +76,12 @@ function M.sign_at(line)
     { line - 1, -1 },
     { details = true, overlap = true }
   )
-  return marks[1] and vim.trim(marks[1][4].sign_text)
+  for _, mark in ipairs(marks) do
+    if mark[4].sign_text then
+      return vim.trim(mark[4].sign_text)
+    end
+  end
+  return nil
 end
 
 local select = vim.ui.select
