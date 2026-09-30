@@ -86,22 +86,33 @@ function M.clear()
   store.clear()
 end
 
+-- Remember the latest live range for parking, or for a URI provider that
+-- replaces an already-attached line without changing its contents.
+---@param comment ScratchComment
+---@param bufnr integer
+---@return boolean
+local function snapshot(comment, bufnr)
+  local start_line, end_line, start_col, end_col = anchors.range(comment)
+  if not start_line then
+    return false
+  end
+  end_line = assert(end_line)
+  comment.last_location = {
+    start_line = start_line,
+    end_line = end_line,
+    start_col = start_col,
+    end_col = end_col,
+  }
+  comment.snippet = table.concat(views.text(bufnr, start_line, end_line, start_col, end_col), "\n")
+  return true
+end
+
 -- Snapshot while extmarks and text still exist. BufUnload, BufDelete and
 -- BufWipeout can all fire for the same buffer; only the first does work.
 ---@param bufnr integer
 function M.park_buffer(bufnr)
   for _, comment in ipairs(store.in_buffer(bufnr)) do
-    local start_line, end_line, start_col, end_col = anchors.range(comment)
-    if start_line then
-      end_line = assert(end_line)
-      comment.last_location = {
-        start_line = start_line,
-        end_line = end_line,
-        start_col = start_col,
-        end_col = end_col,
-      }
-      comment.snippet =
-        table.concat(views.text(bufnr, start_line, end_line, start_col, end_col), "\n")
+    if snapshot(comment, bufnr) then
       comment.state = "parked"
     else
       comment.state = "inactive"
@@ -217,9 +228,22 @@ vim.api.nvim_create_autocmd("BufEnter", {
       end
       if not watched[bufnr] then
         watched[bufnr] = vim.api.nvim_buf_attach(bufnr, false, {
-          on_lines = function()
+          on_lines = function(_, _, _, first, last, new_last)
+            -- The next provider change can invalidate the mark before a
+            -- scheduled snapshot runs. Track line shifts above it immediately.
+            for _, comment in ipairs(store.in_buffer(bufnr)) do
+              local where = comment.last_location
+              if first <= where.start_line - 1 and last <= where.start_line - 1 then
+                local delta = new_last - last
+                where.start_line = where.start_line + delta
+                where.end_line = where.end_line + delta
+              end
+            end
             vim.schedule(function()
               if vim.api.nvim_buf_is_valid(bufnr) then
+                for _, comment in ipairs(store.in_buffer(bufnr)) do
+                  snapshot(comment, bufnr)
+                end
                 M.attach_buffer(bufnr)
               end
             end)
