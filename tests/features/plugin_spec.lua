@@ -24,6 +24,10 @@ describe("the plugin", function()
     expect.equality(fresh("io.write(vim.fn.exists(':CommentShow'))"), "2")
   end)
 
+  it("has no :CommentDelete command", function()
+    expect.equality(fresh("io.write(vim.fn.exists(':CommentDelete'))"), "0")
+  end)
+
   it("loads nothing until a command runs", function()
     local loaded = "io.write(tostring(package.loaded['scratch_comments.actions'] ~= nil))"
     expect.equality(fresh(loaded), "false")

@@ -8,6 +8,12 @@ local M = {}
 ---@param current ScratchCommentWindow
 ---@param direction 1|-1
 local function cycle(current, direction)
+  -- Manager-opened cards never cycle in a source file, even if the quickfix
+  -- window that opened them has since been closed.
+  if current.from_list then
+    notify.info("Jump to the file to navigate its comments")
+    return
+  end
   if vim.bo[vim.api.nvim_win_get_buf(current.comment_win)].modified then
     notify.warn("Save or discard the comment first")
     return

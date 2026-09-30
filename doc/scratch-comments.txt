@@ -50,7 +50,7 @@ Requires Neovim 0.12 or newer.
                         on, in the same window |:Comment| uses. If more than
                         one comment covers the line, asks which one. It opens
                         in normal mode. Edit the comment and |:w| to save, or
-                        |:q| to close it.
+                        |:q| to close it. Saving it empty deletes the comment.
 
                                                                 *:CommentNext*
 :CommentNext            Go to the next comment in the current file, wrapping
@@ -67,12 +67,6 @@ Requires Neovim 0.12 or newer.
                         wrapping at the start. With a comment open, show the
                         previous comment in that window instead.
 
-                                                              *:CommentDelete*
-:CommentDelete          Delete the comment at the cursor. If more than one
-                        comment covers the line, asks which one. On a line
-                        with no comment, lists the buffer's orphaned comments
-                        to choose from.
-
                                                                 *:CommentList*
 :CommentList [filter]   Put every comment in the |quickfix| list and open it.
                         With [filter], only the comments that fuzzy match it
@@ -82,13 +76,12 @@ Requires Neovim 0.12 or newer.
 
                         While the list is open, the comment the cursor is on
                         is shown in a card above it, with the lines it is on.
-                        Press <CR> to open its source and jump to it (including
-                        a source whose buffer was closed), or d to delete that
-                        comment without opening the source. The card goes away
-                        with the list. Other quickfix front-ends (trouble.nvim,
-                        nvim-bqf, Snacks.picker.qflist, :Telescope quickfix)
-                        can show the entries; the <CR> and d mappings belong
-                        to the built-in list.
+                        Press <CR> to jump to the source (even if its buffer
+                        was closed), e to edit in the comment card, or d to
+                        delete the comment. The card goes away with the list.
+                        Other quickfix front-ends (trouble.nvim, nvim-bqf,
+                        Snacks.picker.qflist, :Telescope quickfix) can show
+                        the entries; these keys belong to the built-in list.
 
                                                               *:CommentExport*
 :CommentExport[!] [format]
@@ -134,7 +127,7 @@ orphan). A completed ordinary file reload with mismatched text also makes a
 parked comment inactive. Inactive comments are listed last in |:CommentList|
 and in an "Orphaned" section of the export; |undo| restores an extmark whose
 buffer is still present. Delete an inactive comment with d in the list, or
-use |:CommentDelete| on a line with no comment in the same buffer.
+open its card with e and save an empty comment.
 
 In tmux you may need to set the clipboard to OSC 52 yourself: >lua
     vim.g.clipboard = "osc52"
@@ -172,7 +165,6 @@ needs 'termguicolors'. For a different dim, or none: >lua
     scratch.show()
     scratch.next()
     scratch.prev()
-    scratch.delete()
     scratch.list()
     scratch.render(format)             -- "markdown" (default) or "json"
     scratch.export(format, in_buffer)  -- copy, or open in a scratch buffer

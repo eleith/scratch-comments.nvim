@@ -13,7 +13,6 @@ function M.add(start_line, end_line)
 end
 
 M.show = actions.show_current
-M.delete = actions.delete_current
 M.toggle = actions.toggle
 M.clear = actions.clear
 M.render = export.render

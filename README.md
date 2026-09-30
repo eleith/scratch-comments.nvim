@@ -87,7 +87,6 @@ it, pipe it to a command, or edit it:
 | `:CommentShow` | Show the comment at the cursor, with the lines it's on. Edit it there and `:w` to save |
 | `:CommentNext` | Go to the next comment in the file |
 | `:CommentPrev` | Go to the previous comment in the file |
-| `:CommentDelete` | Delete the comment at the cursor, or pick an orphaned one |
 | `:CommentList [filter]` | Put comments in the quickfix list and open it, fuzzy matching `filter` |
 | `:CommentExport[!] [format]` | Copy all comments to the clipboard as `markdown` (default) or `json`. `!` opens them in a scratch buffer |
 | `:CommentToggle [on\|off]` | Show or hide the comment signs |
@@ -116,8 +115,9 @@ comment in that window instead. save or discard your changes first.
 `:CommentList` puts all your comments in the quickfix list, so `]q` and `[q`
 move between them across files. while the list is open, the comment under the
 cursor is shown in a card above it. in the built-in list, press `<CR>` to go
-to a comment (even in a closed file), or `d` to delete it. give it an argument
-to list only the comments that fuzzy match it, in their text, snippet or path:
+to a comment (even in a closed file), `e` to edit it, or `d` to delete it.
+give it an argument to list only the comments that fuzzy match it, in their
+text, snippet or path:
 
 ```vim
 :CommentList typo
@@ -136,16 +136,16 @@ any quickfix viewer works:
 
 comments stay when you close a buffer (`:bd`, `:bw`). open the same source
 again and they'll pick up where they left off if the text is still on the same
-lines. they go away when you delete them, run `:CommentClear`, or exit neovim.
-to keep them longer, export them to a file.
+lines. delete one with `d` in the list, or save it empty from its comment
+window. `:CommentClear` deletes them all. to keep them after exiting neovim,
+export them to a file.
 
 the signs share the sign column with plugins like gitsigns, and can cover their
 signs. `:CommentToggle` hides ours when you need to see theirs.
 
 if the lines a comment is on are deleted, it becomes an orphan. orphans are
 listed last in `:CommentList` and in an "Orphaned" section of the export. undo
-restores them while the buffer is open. delete one with `d` in the list, or
-run `:CommentDelete` on a line with no comment.
+restores them while the buffer is open. delete one with `d` in the list.
 
 ## colors
 
@@ -176,7 +176,6 @@ scratch.add(start_line, end_line)  -- default: the cursor line
 scratch.show()
 scratch.next()
 scratch.prev()
-scratch.delete()
 scratch.list()
 scratch.render(format)             -- "markdown" (default) or "json"
 scratch.export(format, in_buffer)  -- copy, or open in a scratch buffer

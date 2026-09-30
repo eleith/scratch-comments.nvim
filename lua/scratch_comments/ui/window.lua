@@ -16,10 +16,14 @@ local mode_names = {
 
 ---@class ScratchCommentWindow
 ---@field id? string unset until a new comment is saved
----@field bufnr integer
+---@field bufnr? integer
+---@field source_name? string
 ---@field line integer
 ---@field source_win integer
 ---@field comment_win? integer
+---@field on_close? fun()
+---@field on_saved? fun()
+---@field from_list? boolean
 
 ---@type ScratchCommentWindow?
 local current
@@ -32,8 +36,14 @@ function M.open(spec, record)
     if current and current.comment_win == record.comment_win then
       current = nil
     end
+    if record.on_close then
+      record.on_close()
+    end
   end
-  local source_name = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(record.bufnr), ":t")
+  local source_buffer_name = record.source_name
+    or (record.bufnr and vim.api.nvim_buf_get_name(record.bufnr))
+    or "comment"
+  local source_name = vim.fn.fnamemodify(source_buffer_name, ":t")
   spec.comment_name = source_name .. ":" .. record.line .. " [comment]"
   local panes = frame.open(spec)
   local comment_win, comment_buf = panes.comment_win, panes.comment_buf
@@ -73,10 +83,21 @@ function M.open(spec, record)
     callback = function()
       local lines = vim.api.nvim_buf_get_lines(comment_buf, 0, -1, false)
       local text = vim.trim(table.concat(lines, "\n"))
-      if text ~= "" and spec.on_save and spec.on_save(text) == false then
+      local result = spec.on_save and spec.on_save(text)
+      if result == false then
         return
       end
       vim.bo[comment_buf].modified = false
+      if record.on_saved then
+        record.on_saved()
+      end
+      if result == "deleted" then
+        vim.schedule(function()
+          if vim.api.nvim_win_is_valid(comment_win) then
+            vim.api.nvim_win_close(comment_win, true)
+          end
+        end)
+      end
     end,
   })
 end
@@ -91,6 +112,9 @@ function M.close()
   if vim.bo[vim.api.nvim_win_get_buf(open.comment_win)].modified then
     return false
   end
+  -- A command replacing the card (e.g. :CommentExport!) owns the next focus.
+  -- Only a user closing the card should return to its list.
+  open.on_close = nil
   pcall(vim.api.nvim_win_close, open.comment_win, true)
   return true
 end

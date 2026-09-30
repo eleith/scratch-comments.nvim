@@ -47,13 +47,8 @@ end
 
 ---@param views ScratchCommentView[]
 ---@param orphans ScratchComment[]
----@param on_entry? fun(index: integer?) called with the entry the cursor is on
-function M.list(views, orphans, on_entry)
-  if #views + #orphans == 0 then
-    notify.info("No comments")
-    return
-  end
-
+---@return table[]
+function M.items(views, orphans)
   local entries = vim.tbl_map(function(comment)
     return {
       filename = comment.source_name,
@@ -73,7 +68,19 @@ function M.list(views, orphans, on_entry)
     })
   end
 
-  vim.fn.setqflist({}, " ", { title = "Comments", items = entries })
+  return entries
+end
+
+---@param views ScratchCommentView[]
+---@param orphans ScratchComment[]
+---@param on_entry? fun(index: integer?) called with the entry the cursor is on
+function M.list(views, orphans, on_entry)
+  if #views + #orphans == 0 then
+    notify.info("No comments")
+    return
+  end
+
+  vim.fn.setqflist({}, " ", { title = "Comments", items = M.items(views, orphans) })
   vim.cmd.copen()
   follow(on_entry)
   return vim.fn.getqflist({ id = 0 }).id

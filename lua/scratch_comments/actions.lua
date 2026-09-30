@@ -1,6 +1,7 @@
 local comments = require("scratch_comments.comments")
 local location = require("scratch_comments.location")
 local paths = require("scratch_comments.paths")
+local store = require("scratch_comments.model.store")
 local views = require("scratch_comments.model.views")
 local notify = require("scratch_comments.ui.notify")
 local card = require("scratch_comments.ui.card")
@@ -53,21 +54,67 @@ local function cursor_comments()
   end, views.in_buffer(vim.api.nvim_get_current_buf()))
 end
 
----@param view ScratchCommentView
+---@param id string
+---@param text string
+---@return boolean|string? "deleted" when saving removes the comment
+local function save_existing(id, text)
+  local comment = vim.iter(store.all()):find(function(candidate)
+    return candidate.id == id
+  end)
+  if not comment then
+    notify.warn("This comment is gone; nothing was saved")
+    return false
+  end
+  if text == "" then
+    comments.delete(comment)
+    notify.info("Deleted comment")
+    return "deleted"
+  end
+  comments.edit(id, text)
+  notify.info("Updated comment")
+end
+
+---@param view ScratchComment|ScratchCommentView
 ---@param source_win integer
-function M.show(view, source_win)
-  window.open(
-    vim.tbl_extend("error", card.of(view), {
-      on_save = function(text)
-        if not comments.edit(view.id, text) then
-          notify.warn("This comment is gone; nothing was saved")
-          return false
-        end
-        notify.info("Updated comment")
-      end,
-    }),
-    { id = view.id, bufnr = view.bufnr, line = view.start_line, source_win = source_win }
-  )
+---@param on_close? fun()
+---@param on_saved? fun()
+---@param from_list? boolean
+function M.show(view, source_win, on_close, on_saved, from_list)
+  local frame
+  if view.start_line then
+    frame = card.of(view --[[@as ScratchCommentView]])
+  else
+    frame = card.of_orphan(view)
+  end
+  frame.on_save = function(text)
+    return save_existing(view.id, text)
+  end
+  window.open(frame, {
+    id = view.id,
+    bufnr = view.bufnr,
+    source_name = view.source_name,
+    line = view.start_line or view.last_location.start_line,
+    source_win = source_win,
+    on_close = on_close,
+    on_saved = on_saved,
+    from_list = from_list,
+  })
+end
+
+---@param id string
+---@param on_close? fun()
+---@param on_saved? fun()
+function M.show_by_id(id, on_close, on_saved)
+  local view = vim.iter(views.anchored()):find(function(entry)
+    return entry.id == id
+  end) or vim.iter(views.orphans()):find(function(entry)
+    return entry.id == id
+  end)
+  if view then
+    M.show(view, vim.api.nvim_get_current_win(), on_close, on_saved, true)
+  else
+    notify.warn("This comment is gone")
+  end
 end
 
 -- Opens an editor for a comment that does not exist yet; it is created when
@@ -90,13 +137,9 @@ local function edit_new(bufnr, file_path, where)
     comment = "",
     on_save = function(text)
       if added then
-        if not comments.edit(added.id, text) then
-          notify.warn("This comment is gone; nothing was saved")
-          return false
-        end
-        return
+        return save_existing(added.id, text)
       end
-      if not vim.api.nvim_buf_is_valid(bufnr) then
+      if text == "" or not vim.api.nvim_buf_is_valid(bufnr) then
         return
       end
       added = comments.add({
@@ -162,12 +205,6 @@ local function choose(candidates, callback)
   end)
 end
 
----@param comment ScratchComment
-local function delete(comment)
-  comments.delete(comment)
-  notify.info("Deleted comment")
-end
-
 function M.show_current()
   local at_cursor = cursor_comments()
   if #at_cursor == 0 then
@@ -177,35 +214,6 @@ function M.show_current()
   local source_win = vim.api.nvim_get_current_win()
   choose(at_cursor, function(view)
     M.show(view, source_win)
-  end)
-end
-
-function M.delete_current()
-  local at_cursor = cursor_comments()
-  if #at_cursor > 0 then
-    choose(at_cursor, delete)
-    return
-  end
-
-  local bufnr = vim.api.nvim_get_current_buf()
-  local name = vim.api.nvim_buf_get_name(bufnr)
-  local orphans = vim.tbl_filter(function(comment)
-    return comment.bufnr == bufnr or (comment.state == "inactive" and comment.source_name == name)
-  end, views.orphans())
-  if #orphans == 0 then
-    notify.info("No comment at cursor")
-    return
-  end
-
-  vim.ui.select(orphans, {
-    prompt = "Delete orphaned comment: ",
-    format_item = function(comment)
-      return summary(comment.comment)
-    end,
-  }, function(comment)
-    if comment then
-      delete(comment)
-    end
   end)
 end
 

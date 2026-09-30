@@ -21,7 +21,7 @@ end
 ---@field filetype string
 ---@field comment string
 ---@field comment_name? string name shown for the editable comment buffer
----@field on_save? fun(text: string): boolean? false keeps the text unsaved
+---@field on_save? fun(text: string): boolean|string? false keeps the text unsaved; "deleted" closes the editor
 ---@field comment_title? string
 ---@field on_close? fun()
 ---@field enter? boolean focus the comment pane (default: true)

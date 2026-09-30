@@ -17,10 +17,6 @@ command("CommentShow", function()
   scratch().show()
 end, { desc = "Show the comments at the cursor" })
 
-command("CommentDelete", function()
-  scratch().delete()
-end, { desc = "Delete the comment at the cursor" })
-
 command("CommentNext", function()
   scratch().next()
 end, { desc = "Go to the next comment" })
