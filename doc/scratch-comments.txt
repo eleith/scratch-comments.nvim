@@ -35,7 +35,9 @@ Requires Neovim 0.12 or newer.
                         (|v|) comments on just the selected text. A linewise
                         one (|V|) comments on whole lines. If that exact text
                         already has a comment, open it for editing instead of
-                        adding a duplicate.
+                        adding a duplicate. In the built-in quickfix list
+                        opened by |:CommentList|, open the comment under the
+                        cursor for editing without jumping to its source.
 
                         A window opens over the file: the lines
                         you are commenting on at the top, your comment below.
@@ -52,17 +54,18 @@ Requires Neovim 0.12 or newer.
                         in their text, snippet or path (see |matchfuzzy()|).
                         Moving through the built-in list does not move the
                         source cursor or open a card. <CR> jumps to the
-                        comment's source location and opens its card over the
-                        file, leaving quickfix visible. It starts in normal
-                        mode. An orphan has no location;
-                        <CR> edits it without a jump. |:w| saves; saving it
+                        comment's source location without opening a card.
+                        For an orphan there is no location to jump to; the
+                        list stays open. |:Comment| opens the cursor row's
+                        card for editing without moving the source cursor.
+                        The card opens in normal mode. |:w| saves; saving it
                         empty deletes it. <Esc> closes a clean card from
                         the list or the card; unsaved changes require |:w| or
                         |:q!|. With no card open, <Esc> does nothing.
                         Other quickfix front-ends (trouble.nvim, nvim-bqf,
                         Snacks.picker.qflist, :Telescope quickfix) can show
-                        the entries; <CR> and <Esc> belong to the built-in
-                        list only.
+                        the entries; the cursor-row commands and <CR>/<Esc>
+                        belong to the built-in list only.
 
                                                                *:CommentDelete*
 :CommentDelete          In the built-in quickfix list opened by |:CommentList|,
@@ -117,8 +120,8 @@ orphan). A completed ordinary file reload with mismatched text also makes a
 parked comment inactive. Inactive comments are listed last in |:CommentList|
 and in an "Orphaned" section of the export; |undo| restores an extmark whose
 buffer is still present. Delete an inactive comment with |:CommentDelete|
-from the built-in quickfix list or its open card, or open it with <CR> and
-save it empty.
+from the built-in quickfix list or its open card, or open it with |:Comment|
+and save it empty.
 
 In tmux you may need to set the clipboard to OSC 52 yourself: >lua
     vim.g.clipboard = "osc52"

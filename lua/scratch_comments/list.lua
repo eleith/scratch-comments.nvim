@@ -1,5 +1,4 @@
 local actions = require("scratch_comments.actions")
-local card = require("scratch_comments.ui.card")
 local comments = require("scratch_comments.comments")
 local store = require("scratch_comments.model.store")
 local notify = require("scratch_comments.ui.notify")
@@ -98,74 +97,46 @@ local function jump()
     notify.warn("This comment is gone")
     return
   end
+  local entry = vim.iter(views.anchored()):find(function(view)
+    return view.id == id
+  end)
+  if not entry then
+    notify.warn("This comment has no source location; use :Comment to edit it")
+    return
+  end
   if not window.close() then
     notify.warn("Save or discard the comment first")
     return
   end
   local qf_win = vim.api.nvim_get_current_win()
-  local entry = vim.iter(views.anchored()):find(function(view)
-    return view.id == id
-  end) or vim.iter(views.orphans()):find(function(view)
-    return view.id == id
+  local ok = pcall(function()
+    vim.cmd(index .. "cc")
   end)
-  if not entry then
-    notify.warn("This comment is gone")
+  if not ok or vim.api.nvim_buf_get_name(0) ~= comment.source_name then
+    notify.warn("Could not open the comment source")
     return
   end
-  local owner = qf_win
-  local bufnr, win
-  if entry.start_line then
-    local ok = pcall(function()
-      vim.cmd(index .. "cc")
-    end)
-    if ok and vim.api.nvim_buf_get_name(0) == comment.source_name then
-      bufnr, win = vim.api.nvim_get_current_buf(), vim.api.nvim_get_current_win()
-      owner = win
-    else
-      notify.warn("Could not open the comment source")
-    end
-  end
+  local bufnr, win = vim.api.nvim_get_current_buf(), vim.api.nvim_get_current_win()
   local expected_id = list_id
-  if bufnr then
-    -- A completed read may invalidate a parked anchor while :cc opens it.
-    local resolved = vim.iter(views.orphans()):find(function(orphan)
-      return orphan.id == id
-    end)
-    if resolved then
-      entry = resolved
-      bufnr, win, owner = nil, nil, qf_win
+  local function return_to_manager()
+    if vim.api.nvim_win_is_valid(qf_win) and vim.fn.getqflist({ id = 0 }).id == expected_id then
       vim.api.nvim_set_current_win(qf_win)
+      refresh(id, index, expected_id)
     end
   end
-  actions.show(entry, owner, function()
-    vim.schedule(function()
-      if owner == qf_win and vim.fn.getqflist({ id = 0 }).id ~= expected_id then
-        return
-      end
-      if vim.api.nvim_win_is_valid(owner) then
-        vim.api.nvim_set_current_win(owner)
-      end
-    end)
-  end, function()
-    refresh(id, index, expected_id)
-  end)
-  if not bufnr or not win then
+  -- Loading a parked source can reveal that its saved location is gone.
+  if vim.iter(views.orphans()):find(function(orphan)
+    return orphan.id == id
+  end) then
+    return_to_manager()
+    notify.warn("This comment no longer has a location; use :Comment to edit it")
     return
   end
   local function position()
     if not vim.api.nvim_win_is_valid(win) or vim.api.nvim_win_get_buf(win) ~= bufnr then
       return true
     end
-    local active = window.current()
-    if
-      vim.api.nvim_get_current_win() ~= win
-      and not (
-        active
-        and active.id == id
-        and active.source_win == win
-        and vim.api.nvim_get_current_win() == active.comment_win
-      )
-    then
+    if vim.api.nvim_get_current_win() ~= win then
       return true
     end
     local current = by_id(id)
@@ -180,13 +151,8 @@ local function jump()
       return true
     end
     if current.state == "inactive" then
-      local open = window.current()
-      if open and open.id == id and open.update then
-        open.update(card.of_orphan(current))
-        open.source_win, owner = qf_win, qf_win
-        refresh(id, index, expected_id)
-      end
-      notify.warn("This comment no longer has a location")
+      return_to_manager()
+      notify.warn("This comment no longer has a location; use :Comment to edit it")
       return true
     end
     return false
@@ -197,18 +163,16 @@ local function jump()
   -- An async BufReadCmd may fill the buffer after :cc has already moved the
   -- cursor. Keep one listener per buffer even if the user jumps repeatedly.
   pending_jump[bufnr] = position
-  local open = window.current()
-  if open then
-    vim.api.nvim_create_autocmd("BufLeave", {
-      buffer = vim.api.nvim_win_get_buf(open.comment_win),
-      once = true,
-      callback = function()
-        if pending_jump[bufnr] == position then
-          pending_jump[bufnr] = nil
-        end
-      end,
-    })
-  end
+  -- A delayed read must not reposition a source the user has left and
+  -- returned to in the meantime.
+  vim.api.nvim_create_autocmd("WinLeave", {
+    once = true,
+    callback = function()
+      if pending_jump[bufnr] == position then
+        pending_jump[bufnr] = nil
+      end
+    end,
+  })
   -- BufReadPost reattachment runs on the next scheduled turn. Recheck after
   -- it, even if the file was fully populated before our on_lines listener.
   vim.schedule(function()
@@ -267,6 +231,71 @@ refresh = function(id, index, expected_id)
     end
   end
   vim.api.nvim_win_set_cursor(qf.winid, { row, 0 })
+end
+
+-- A card opened from a source window may also change a visible manager list.
+---@param id? string
+function M.refresh_comment(id)
+  local qf = vim.fn.getqflist({ id = 0, winid = 0 })
+  if list_id and qf.id == list_id and qf.winid ~= 0 then
+    local row = vim.api.nvim_win_get_cursor(qf.winid)[1]
+    local item = vim.fn.getqflist({ items = 1 }).items[row]
+    local selected_id = item and item.user_data and item.user_data.scratch_comments_id
+    refresh(selected_id or id or "", row, list_id)
+  end
+end
+
+-- Recheck a pending navigation after reattachment, which can happen after
+-- the last on_lines notification from an asynchronous source.
+---@param bufnr integer
+function M.source_updated(bufnr)
+  M.refresh_comment()
+  local position = pending_jump[bufnr]
+  if position then
+    vim.schedule(function()
+      if pending_jump[bufnr] == position and position() then
+        pending_jump[bufnr] = nil
+      end
+    end)
+  end
+end
+
+-- Open the card for the cursor row without jumping to its source.
+---@return boolean handled true if this is our quickfix list
+function M.edit_selected()
+  local index, id = selected()
+  if not index then
+    return false
+  end
+  if not id or not by_id(id) then
+    notify.warn("This comment is gone")
+    return true
+  end
+  local entry = vim.iter(views.anchored()):find(function(view)
+    return view.id == id
+  end) or vim.iter(views.orphans()):find(function(view)
+    return view.id == id
+  end)
+  if not entry then
+    notify.warn("This comment is gone")
+    return true
+  end
+  if not window.close() then
+    notify.warn("Save or discard the comment first")
+    return true
+  end
+  local qf_win = vim.api.nvim_get_current_win()
+  local expected_id = list_id
+  actions.show(entry, qf_win, function()
+    vim.schedule(function()
+      if vim.fn.getqflist({ id = 0 }).id == expected_id and vim.api.nvim_win_is_valid(qf_win) then
+        vim.api.nvim_set_current_win(qf_win)
+      end
+    end)
+  end, function()
+    refresh(id, index, expected_id)
+  end)
+  return true
 end
 
 -- From our quickfix list, use the cursor row (not the last-jumped quickfix
@@ -346,7 +375,7 @@ function M.open(filter)
     return
   end
   list_bufnr = vim.api.nvim_get_current_buf()
-  vim.keymap.set("n", "<CR>", jump, { buffer = list_bufnr, desc = "Jump and edit comment" })
+  vim.keymap.set("n", "<CR>", jump, { buffer = list_bufnr, desc = "Jump to comment source" })
   vim.keymap.set("n", "<Esc>", escape, { buffer = list_bufnr, desc = "Dismiss comment card" })
   return true
 end

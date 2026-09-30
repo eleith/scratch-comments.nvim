@@ -77,7 +77,7 @@ it, pipe it to a command, or edit it:
 
 | Command | Does |
 | --- | --- |
-| `:Comment` | Add a comment on the current line or range, or edit one already on that exact range |
+| `:Comment` | Add or edit a comment in a file; in the built-in comment list, open the cursor row's card |
 | `:CommentList [filter]` | Put comments in the quickfix list and open it, fuzzy matching `filter` |
 | `:CommentDelete` | Delete the cursor row in the built-in quickfix list, or the open card elsewhere |
 | `:CommentExport[!] [format]` | Copy all comments to the clipboard as `markdown` (default) or `json`. `!` opens them in a scratch buffer |
@@ -99,12 +99,13 @@ vim.keymap.set("n", "<leader>cx", "<Cmd>CommentExport<CR>", { desc = "Copy comme
 
 `:CommentList` puts all your comments in the quickfix list. move through them
 with `j`/`k` without moving the source cursor or opening a card. `<CR>` jumps
-to the source when the comment has a location, then opens its card over the
-file, leaving quickfix visible. `:w` saves; `:CommentDelete` deletes the
-comment under the quickfix cursor, or the open card when outside the list.
-`<Esc>` closes a clean card; unsaved edits need `:w` or `:q!`. an orphan has no
-line to jump to, so its editor returns to the list.
-give `:CommentList` an argument to fuzzy match text, snippet or path:
+to the source without opening a card. `:Comment` opens the comment under the
+quickfix cursor for editing without jumping; its card stays over the file area
+so the list remains visible. `:w` saves; `:CommentDelete` deletes the comment
+under the quickfix cursor, or the open card when outside the list. `<Esc>`
+closes a clean card; unsaved edits need `:w` or `:q!`. an orphan has no line to
+jump to, but `:Comment` still opens its card. give `:CommentList` an argument to
+fuzzy match text, snippet or path:
 
 ```vim
 :CommentList typo

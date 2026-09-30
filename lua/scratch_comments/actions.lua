@@ -96,8 +96,16 @@ local function edit_new(bufnr, file_path, where)
   ---@type ScratchComment?
   local added
   ---@type ScratchCommentWindow
-  local record =
-    { bufnr = bufnr, line = where.start_line, source_win = vim.api.nvim_get_current_win() }
+  local record = {
+    bufnr = bufnr,
+    line = where.start_line,
+    source_win = vim.api.nvim_get_current_win(),
+    on_saved = function()
+      if added then
+        require("scratch_comments.list").refresh_comment(added.id)
+      end
+    end,
+  }
   window.open({
     title = location.title(file_path, where),
     context = views.text(bufnr, where.start_line, where.end_line, where.start_col, where.end_col),
@@ -128,6 +136,12 @@ end
 ---@param use_selection? boolean
 function M.comment(start_line, end_line, use_selection)
   local bufnr = vim.api.nvim_get_current_buf()
+  if vim.bo[bufnr].buftype == "quickfix" then
+    if not require("scratch_comments.list").edit_selected() then
+      notify.warn("Not a Scratch Comments list")
+    end
+    return
+  end
   local name = vim.api.nvim_buf_get_name(bufnr)
   if name == "" then
     notify.warn("Save the buffer before commenting on it")
@@ -146,7 +160,9 @@ function M.comment(start_line, end_line, use_selection)
   local existing =
     find_anchor(bufnr, where.start_line, where.end_line, where.start_col, where.end_col)
   if existing then
-    M.show(existing, vim.api.nvim_get_current_win())
+    M.show(existing, vim.api.nvim_get_current_win(), nil, function()
+      require("scratch_comments.list").refresh_comment(existing.id)
+    end)
     return
   end
 

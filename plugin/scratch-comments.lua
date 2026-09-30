@@ -11,11 +11,11 @@ local command = vim.api.nvim_create_user_command
 
 command("Comment", function(ctx)
   require("scratch_comments.actions").comment(ctx.line1, ctx.line2, ctx.range == 2)
-end, { range = true, desc = "Comment on the current line or range" })
+end, { range = true, desc = "Add or edit a source comment, or edit the selected quickfix comment" })
 
 command("CommentDelete", function()
   scratch().delete()
-end, { desc = "Delete the comment in the open card" })
+end, { desc = "Delete the selected quickfix comment or open card" })
 
 command("CommentList", function(ctx)
   scratch().list(ctx.args ~= "" and ctx.args or nil)

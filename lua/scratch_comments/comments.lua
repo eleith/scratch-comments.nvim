@@ -152,14 +152,17 @@ function M.attach_buffer(bufnr, definitive)
           changed = true
         elseif definitive then
           comment.state = "inactive"
+          changed = true
         end
       elseif definitive then
         comment.state = "inactive"
+        changed = true
       end
     end
   end
   if changed then
     M.redraw(bufnr)
+    require("scratch_comments.list").source_updated(bufnr)
   end
 end
 
