@@ -27,6 +27,46 @@ local mode_names = {
 ---@type ScratchCommentWindow?
 local current
 
+-- A quickfix row with no source location still edits in the file area, while
+-- closing its card returns focus to the list.
+---@param record ScratchCommentWindow
+---@return integer?
+local function editing_window(record)
+  local source = record.source_win
+  if
+    vim.api.nvim_win_is_valid(source)
+    and vim.bo[vim.api.nvim_win_get_buf(source)].buftype ~= "quickfix"
+  then
+    return source
+  end
+  local file_win, other_win
+  for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+    if vim.api.nvim_win_get_config(win).relative == "" then
+      local bufnr = vim.api.nvim_win_get_buf(win)
+      if record.source_name and vim.api.nvim_buf_get_name(bufnr) == record.source_name then
+        return win
+      end
+      if vim.bo[bufnr].buftype == "" then
+        file_win = file_win or win
+      elseif vim.bo[bufnr].buftype ~= "quickfix" then
+        other_win = other_win or win
+      end
+    end
+  end
+  if file_win or other_win then
+    return file_win or other_win
+  end
+  -- Quickfix cannot provide a source area on its own. Make one if there is
+  -- room; otherwise keep the list usable rather than drawing over it.
+  if not pcall(function()
+    vim.cmd("aboveleft new")
+  end) then
+    notify.warn("Make room for an editing window to open this comment")
+    return nil
+  end
+  return vim.api.nvim_get_current_win()
+end
+
 ---@param spec ScratchFrame
 ---@param record ScratchCommentWindow
 function M.open(spec, record)
@@ -43,7 +83,11 @@ function M.open(spec, record)
     or "comment"
   local source_name = vim.fn.fnamemodify(source_buffer_name, ":t")
   spec.comment_name = source_name .. ":" .. record.line .. " [comment]"
-  local panes = frame.open(spec)
+  local parent = editing_window(record)
+  if not parent then
+    return
+  end
+  local panes = frame.open(spec, parent)
   local comment_win, comment_buf = panes.comment_win, panes.comment_buf
   record.comment_win = comment_win
   current = record

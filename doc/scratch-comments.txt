@@ -37,7 +37,7 @@ Requires Neovim 0.12 or newer.
                         already has a comment, open it for editing instead of
                         adding a duplicate.
 
-                        A window opens in the middle of the screen: the lines
+                        A window opens over the file: the lines
                         you are commenting on at the top, your comment below.
                         A new comment opens in insert mode, and the title
                         shows the mode you are in. Write as many lines as you
@@ -52,8 +52,9 @@ Requires Neovim 0.12 or newer.
                         in their text, snippet or path (see |matchfuzzy()|).
                         Moving through the built-in list does not move the
                         source cursor or open a card. <CR> jumps to the
-                        comment's source location and opens its card for
-                        editing in normal mode. An orphan has no location;
+                        comment's source location and opens its card over the
+                        file, leaving quickfix visible. It starts in normal
+                        mode. An orphan has no location;
                         <CR> edits it without a jump. |:w| saves; saving it
                         empty deletes it. <Esc> closes a clean card from
                         the list or the card; unsaved changes require |:w| or

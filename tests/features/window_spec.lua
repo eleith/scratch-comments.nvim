@@ -94,6 +94,76 @@ describe("the comment window", function()
     expect.equality(helpers.title(lines_win), " notes.md [lines 1–3] ")
   end)
 
+  it("resizes with its source window when quickfix closes", function()
+    local source_win = require("scratch_comments.ui.window").current().source_win
+    local dim = vim.iter(helpers.every_float()):find(function(win)
+      return vim.w[win].scratch_comments_backdrop
+    end)
+    local before = vim.api.nvim_win_get_config(dim).height
+    vim.cmd.cclose()
+    vim.api.nvim_exec_autocmds("WinResized", {})
+    expect.equality(vim.api.nvim_win_get_height(source_win) > before, true)
+    expect.equality(
+      vim.api.nvim_win_get_config(dim).height,
+      vim.api.nvim_win_get_height(source_win)
+    )
+  end)
+
+  it("keeps a small card inside a very short source window", function()
+    local record = assert(require("scratch_comments.ui.window").current())
+    ---@cast record { comment_win: integer, source_win: integer }
+    local comment_buf = vim.api.nvim_win_get_buf(record.comment_win)
+    vim.api.nvim_buf_set_lines(comment_buf, 0, -1, false, { "unsaved" })
+    vim.api.nvim_set_current_win(record.source_win)
+    vim.cmd("resize 3")
+    vim.api.nvim_exec_autocmds("WinResized", {})
+    local height = vim.api.nvim_win_get_height(record.source_win)
+    local config = vim.api.nvim_win_get_config(record.comment_win)
+    expect.equality(height < 6, true)
+    expect.equality(config.row + config.height <= height, true)
+    expect.equality(vim.bo[comment_buf].modified, true)
+    expect.equality(helpers.text(comment_buf), "unsaved")
+  end)
+
+  it("keeps a card in a narrow editing split", function()
+    local record = assert(require("scratch_comments.ui.window").current())
+    ---@cast record { comment_win: integer, source_win: integer }
+    vim.api.nvim_set_current_win(record.source_win)
+    vim.cmd.vsplit()
+    vim.api.nvim_set_current_win(record.source_win)
+    vim.cmd("vertical resize 4")
+    vim.api.nvim_exec_autocmds("WinResized", {})
+    local config = vim.api.nvim_win_get_config(record.comment_win)
+    expect.equality(vim.api.nvim_win_get_width(record.source_win) <= 5, true)
+    expect.equality(config.width <= vim.api.nvim_win_get_width(record.source_win), true)
+  end)
+
+  it("keeps unsaved edits when the source window closes", function()
+    local record = assert(require("scratch_comments.ui.window").current())
+    ---@cast record { comment_win: integer, source_win: integer }
+    local comment_buf = vim.api.nvim_win_get_buf(record.comment_win)
+    vim.api.nvim_buf_set_lines(comment_buf, 0, -1, false, { "unsaved" })
+    vim.api.nvim_set_current_win(record.source_win)
+    vim.api.nvim_win_close(record.source_win, true)
+    vim.wait(0)
+    expect.equality(vim.api.nvim_win_is_valid(record.comment_win), true)
+    expect.equality(helpers.text(comment_buf), "unsaved")
+    expect.equality(vim.bo[comment_buf].modified, true)
+    local parent = assert(vim.api.nvim_win_get_config(record.comment_win).win)
+    expect.equality(vim.api.nvim_win_is_valid(parent), true)
+    expect.no_equality(vim.bo[vim.api.nvim_win_get_buf(parent)].buftype, "quickfix")
+  end)
+
+  it("closes a clean card if its source window was the last file pane", function()
+    local record = assert(require("scratch_comments.ui.window").current())
+    ---@cast record { comment_win: integer, source_win: integer }
+    vim.api.nvim_set_current_win(record.source_win)
+    vim.api.nvim_win_close(record.source_win, true)
+    vim.wait(0)
+    expect.equality(vim.api.nvim_win_is_valid(record.comment_win), false)
+    expect.equality(vim.bo.buftype, "quickfix")
+  end)
+
   it("closes on <Esc> in normal mode", function()
     vim.cmd([[execute "normal \<Esc>"]])
     expect.equality(#helpers.floats(), 0)
@@ -118,7 +188,13 @@ describe("the comment window", function()
     end, helpers.every_float())
     expect.equality(#dim, 1)
     local config = vim.api.nvim_win_get_config(dim[1])
-    expect.equality({ config.width, config.height }, { vim.o.columns, vim.o.lines })
+    local source_win = require("scratch_comments.ui.window").current().source_win
+    expect.equality(config.relative, "win")
+    expect.equality(config.win, source_win)
+    expect.equality(
+      { config.width, config.height },
+      { vim.api.nvim_win_get_width(source_win), vim.api.nvim_win_get_height(source_win) }
+    )
     expect.equality(config.zindex < vim.api.nvim_win_get_config(0).zindex, true)
     expect.equality(vim.wo[dim[1]].winblend, 60)
     vim.cmd("quit")
@@ -168,5 +244,19 @@ describe("the border", function()
     vim.cmd.CommentList()
     vim.cmd("normal \r")
     expect.equality(vim.api.nvim_win_get_config(0).border[1], "┌")
+  end)
+
+  it("restores a custom border when a short source window grows again", function()
+    vim.o.winborder = "single"
+    vim.cmd.CommentList()
+    vim.cmd("normal \r")
+    local record = assert(require("scratch_comments.ui.window").current())
+    ---@cast record { comment_win: integer, source_win: integer }
+    vim.api.nvim_set_current_win(record.source_win)
+    vim.cmd("resize 3")
+    vim.api.nvim_exec_autocmds("WinResized", {})
+    vim.cmd("resize 12")
+    vim.api.nvim_exec_autocmds("WinResized", {})
+    expect.equality(vim.api.nvim_win_get_config(record.comment_win).border[1], "┌")
   end)
 end)

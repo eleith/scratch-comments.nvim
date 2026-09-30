@@ -189,10 +189,75 @@ describe("the comment list manager", function()
     local qf_win = vim.api.nvim_get_current_win()
     vim.cmd("normal \r")
     expect.equality(helpers.text(), "on a")
+    local dim = vim.iter(helpers.every_float()):find(function(win)
+      return vim.w[win].scratch_comments_backdrop
+    end)
+    local parent = assert(vim.api.nvim_win_get_config(dim).win)
+    expect.equality(vim.api.nvim_win_get_buf(parent), source)
+    expect.no_equality(parent, qf_win)
     vim.cmd.quit()
     vim.wait(0)
     expect.equality(vim.api.nvim_get_current_win(), qf_win)
     expect.equality(vim.bo.buftype, "quickfix")
+  end)
+
+  it("places an orphan card over a file, not an export scratch split", function()
+    vim.cmd("1d")
+    helpers.text_changed()
+    vim.cmd("CommentExport!")
+    expect.equality(vim.bo.buftype, "nofile")
+    vim.cmd.CommentList()
+    vim.api.nvim_win_set_cursor(0, { 2, 0 })
+    vim.cmd("normal \r")
+    local dim = vim.iter(helpers.every_float()):find(function(win)
+      return vim.w[win].scratch_comments_backdrop
+    end)
+    local parent = assert(vim.api.nvim_win_get_config(dim).win)
+    expect.equality(vim.api.nvim_win_get_buf(parent), source)
+  end)
+
+  it("makes a file area if only quickfix remains for an orphan", function()
+    vim.cmd("1d")
+    helpers.text_changed()
+    vim.cmd.CommentList()
+    local qf_win = vim.api.nvim_get_current_win()
+    local file_win = vim.fn.bufwinid(vim.api.nvim_buf_get_name(source))
+    vim.api.nvim_win_close(file_win, true)
+    vim.api.nvim_win_set_cursor(qf_win, { 2, 0 })
+    vim.cmd("normal \r")
+    local dim = vim.iter(helpers.every_float()):find(function(win)
+      return vim.w[win].scratch_comments_backdrop
+    end)
+    local parent = assert(vim.api.nvim_win_get_config(dim).win)
+    expect.no_equality(parent, qf_win)
+    expect.equality(vim.api.nvim_win_is_valid(qf_win), true)
+    vim.cmd.quit()
+    vim.wait(0)
+    expect.equality(vim.api.nvim_get_current_win(), qf_win)
+  end)
+
+  it("keeps quickfix usable if there is no room to open an orphan card", function()
+    vim.cmd("1d")
+    helpers.text_changed()
+    vim.cmd.CommentList()
+    local qf_win = vim.api.nvim_get_current_win()
+    vim.api.nvim_win_close(vim.fn.bufwinid(vim.api.nvim_buf_get_name(source)), true)
+    local min_height, preferred = vim.o.winminheight, vim.o.winheight
+    local ok = pcall(function()
+      vim.o.winheight = 12
+      vim.o.winminheight = 12
+      vim.api.nvim_win_set_cursor(qf_win, { 2, 0 })
+      vim.cmd("normal \r")
+    end)
+    vim.o.winminheight = min_height
+    vim.o.winheight = preferred
+    expect.equality(ok, true)
+    expect.equality(vim.api.nvim_get_current_win(), qf_win)
+    expect.equality(#helpers.floats(), 0)
+    expect.equality(
+      helpers.notified()[#helpers.notified()],
+      "Make room for an editing window to open this comment"
+    )
   end)
 
   it("deletes an orphan by saving its card empty", function()
@@ -508,11 +573,33 @@ describe("quickfix navigation", function()
     local dim = vim.tbl_filter(function(win)
       return vim.w[win].scratch_comments_backdrop
     end, helpers.every_float())
-    expect.equality(vim.api.nvim_win_get_config(dim[1]).height, vim.o.lines)
+    local source_win = require("scratch_comments.ui.window").current().source_win
+    local config = vim.api.nvim_win_get_config(dim[1])
+    expect.equality(config.relative, "win")
+    expect.equality(config.win, source_win)
+    expect.equality(config.height, vim.api.nvim_win_get_height(source_win))
+    local qf_win = vim.fn.getqflist({ winid = 0 }).winid
+    expect.equality(
+      vim.fn.win_screenpos(source_win)[1] + config.height <= vim.fn.win_screenpos(qf_win)[1],
+      true
+    )
     vim.cmd.quit()
     vim.wait(0)
     expect.equality(vim.api.nvim_get_current_buf(), source)
     expect.equality(vim.api.nvim_win_get_cursor(0)[1], 3)
+  end)
+
+  it("keeps another editing split visible behind the card", function()
+    vim.cmd.vsplit()
+    vim.cmd.CommentList()
+    vim.cmd("normal \r")
+    local dim = vim.iter(helpers.every_float()):find(function(win)
+      return vim.w[win].scratch_comments_backdrop
+    end)
+    local config = vim.api.nvim_win_get_config(dim)
+    expect.equality(config.relative, "win")
+    expect.equality(config.width < vim.o.columns, true)
+    expect.equality(vim.api.nvim_win_get_buf(config.win), source)
   end)
 
   it("has nothing to dismiss on <Esc> before opening a card", function()

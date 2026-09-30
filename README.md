@@ -49,7 +49,7 @@ comment on them, or just a word or phrase to comment on only that:
 :'<,'>Comment
 ```
 
-a window opens in the middle of the screen, with the lines you're commenting on
+a window opens over the file, with the lines you're commenting on
 at the top and your comment below. a new comment opens in insert mode, and the
 title shows the mode you're in. write as many lines as you like, then `:wq` to
 save. `:q` or `<Esc>` closes it if you haven't changed anything, and `:q!`
@@ -99,8 +99,8 @@ vim.keymap.set("n", "<leader>cx", "<Cmd>CommentExport<CR>", { desc = "Copy comme
 
 `:CommentList` puts all your comments in the quickfix list. move through them
 with `j`/`k` without moving the source cursor or opening a card. `<CR>` jumps
-to the source when the comment has a location, then opens its card for editing.
-`:w` saves; `:CommentDelete` deletes the comment in an open card, even if you
+to the source when the comment has a location, then opens its card over the
+file, leaving quickfix visible. `:w` saves; `:CommentDelete` deletes the comment in an open card, even if you
 focus the list again. `<Esc>` closes a clean card; unsaved edits need `:w` or
 `:q!`. an orphan has no line to jump to, so its editor returns to the list.
 give `:CommentList` an argument to fuzzy match text, snippet or path:
