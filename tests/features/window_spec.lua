@@ -118,11 +118,7 @@ describe("the comment window", function()
     end, helpers.every_float())
     expect.equality(#dim, 1)
     local config = vim.api.nvim_win_get_config(dim[1])
-    local qf_win = vim.fn.getqflist({ winid = 0 }).winid
-    expect.equality(
-      { config.width, config.height },
-      { vim.o.columns, vim.fn.win_screenpos(qf_win)[1] - 1 }
-    )
+    expect.equality({ config.width, config.height }, { vim.o.columns, vim.o.lines })
     expect.equality(config.zindex < vim.api.nvim_win_get_config(0).zindex, true)
     expect.equality(vim.wo[dim[1]].winblend, 60)
     vim.cmd("quit")

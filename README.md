@@ -98,13 +98,12 @@ vim.keymap.set("n", "<leader>cx", "<Cmd>CommentExport<CR>", { desc = "Copy comme
 ## browsing
 
 `:CommentList` puts all your comments in the quickfix list. move through them
-with `j`/`k` to preview a card without moving the source cursor. `<CR>` jumps
-to the source when the comment has a location, and focuses the same card for
-editing. `:w` saves; `:CommentDelete` deletes the comment shown in a card,
-from either the card or the list. `<Esc>` dismisses a clean card in either
-place; unsaved edits need `:w` or `:q!`. an orphan has no line to jump to, so
-its editor returns to the list. give `:CommentList` an argument to fuzzy match
-comments by text, snippet or path:
+with `j`/`k` without moving the source cursor or opening a card. `<CR>` jumps
+to the source when the comment has a location, then opens its card for editing.
+`:w` saves; `:CommentDelete` deletes the comment in an open card, even if you
+focus the list again. `<Esc>` closes a clean card; unsaved edits need `:w` or
+`:q!`. an orphan has no line to jump to, so its editor returns to the list.
+give `:CommentList` an argument to fuzzy match text, snippet or path:
 
 ```vim
 :CommentList typo
@@ -138,7 +137,7 @@ while its card is open.
 ## colors
 
 `ScratchCommentSign` colors the signs (linked to `Todo` by default).
-`ScratchCommentBackdrop` dims the editor behind comments and `:CommentList`
+`ScratchCommentBackdrop` dims the editor behind an open comment card
 (black at 60% blend by default).
 
 set them in your colorscheme's highlight callback to follow light and dark

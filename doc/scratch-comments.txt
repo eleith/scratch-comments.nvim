@@ -50,14 +50,14 @@ Requires Neovim 0.12 or newer.
 :CommentList [filter]   Put every comment in the |quickfix| list and open it.
                         With [filter], only the comments that fuzzy match it
                         in their text, snippet or path (see |matchfuzzy()|).
-                        Moving through the built-in list previews a card
-                        without moving the source cursor. <CR> jumps to the
-                        comment's source location and focuses that same card
-                        for editing in normal mode. An orphan has no location;
+                        Moving through the built-in list does not move the
+                        source cursor or open a card. <CR> jumps to the
+                        comment's source location and opens its card for
+                        editing in normal mode. An orphan has no location;
                         <CR> edits it without a jump. |:w| saves; saving it
-                        empty deletes it. <Esc> dismisses a clean card from
+                        empty deletes it. <Esc> closes a clean card from
                         the list or the card; unsaved changes require |:w| or
-                        |:q!|. The preview goes away with the list.
+                        |:q!|. With no card open, <Esc> does nothing.
                         Other quickfix front-ends (trouble.nvim, nvim-bqf,
                         Snacks.picker.qflist, :Telescope quickfix) can show
                         the entries; <CR> and <Esc> belong to the built-in
@@ -135,8 +135,8 @@ The signs use ScratchCommentSign, which links to |hl-Todo|. To change it: >lua
     })
 <
                                                      *ScratchCommentBackdrop*
-The editor dims behind the comment window, and behind the card beside
-|:CommentList|, with ScratchCommentBackdrop over it at 'winblend' 60. It
+The editor dims behind the comment window, with ScratchCommentBackdrop over
+it at 'winblend' 60. It
 needs 'termguicolors'. For a different dim, or none: >lua
     vim.api.nvim_set_hl(0, "ScratchCommentBackdrop", { bg = "#000033" })
     vim.api.nvim_set_hl(0, "ScratchCommentBackdrop", { bg = "NONE" })

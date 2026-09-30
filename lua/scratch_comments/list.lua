@@ -2,7 +2,6 @@ local actions = require("scratch_comments.actions")
 local card = require("scratch_comments.ui.card")
 local comments = require("scratch_comments.comments")
 local store = require("scratch_comments.model.store")
-local preview = require("scratch_comments.ui.preview")
 local notify = require("scratch_comments.ui.notify")
 local quickfix = require("scratch_comments.ui.quickfix")
 local window = require("scratch_comments.ui.window")
@@ -15,7 +14,6 @@ local list_bufnr
 local active_filter
 local pending_jump = {}
 local listening = {}
-local dismissed_id
 local refresh
 
 ---@param comment ScratchComment|ScratchCommentView
@@ -114,12 +112,6 @@ local function jump()
     notify.warn("This comment is gone")
     return
   end
-  -- Claim the visible panes before :cc triggers BufLeave on the quickfix list.
-  -- Enter changes focus and writeability, never the card's placement.
-  if preview.current_id() ~= id then
-    preview.show(entry.start_line and card.of(entry) or card.of_orphan(entry), id)
-  end
-  local panes = preview.take()
   local owner = qf_win
   local bufnr, win
   if entry.start_line then
@@ -145,7 +137,7 @@ local function jump()
       vim.api.nvim_set_current_win(qf_win)
     end
   end
-  actions.show(entry, owner, panes, function()
+  actions.show(entry, owner, function()
     vim.schedule(function()
       if owner == qf_win and vim.fn.getqflist({ id = 0 }).id ~= expected_id then
         return
@@ -261,7 +253,6 @@ refresh = function(id, index, expected_id)
   local items = quickfix.items(anchored, orphans)
   vim.fn.setqflist({}, "r", { title = "Comments", items = items })
   if #items == 0 then
-    preview.close()
     vim.api.nvim_win_call(qf.winid, function()
       vim.cmd.cclose()
     end)
@@ -278,12 +269,12 @@ refresh = function(id, index, expected_id)
   vim.api.nvim_win_set_cursor(qf.winid, { row, 0 })
 end
 
--- Delete only the comment displayed in a card, never one inferred from the
--- cursor in an arbitrary file or an unrelated quickfix list.
+-- Delete only the comment displayed in an open editor, never one inferred
+-- from the cursor in a file or the selected quickfix row.
 function M.delete_open()
   local open = window.current()
-  local index, selected_id = selected()
-  local id = open and open.id or (selected_id and preview.current_id())
+  local index = selected()
+  local id = open and open.id
   if not id then
     notify.warn("No comment card open")
     return
@@ -296,10 +287,6 @@ function M.delete_open()
   if not comment then
     notify.warn("This comment is gone")
     return
-  end
-  if not open then
-    preview.close()
-    dismissed_id = id
   end
   comments.delete(comment)
   notify.info("Deleted comment")
@@ -319,24 +306,12 @@ function M.delete_open()
 end
 
 local function escape()
-  local index, id = selected()
-  if not index then
-    return
+  if window.current() and not window.close() then
+    notify.warn("Save with :w, or discard with :q!")
   end
-  if window.current() then
-    if not window.close() then
-      notify.warn("Save with :w, or discard with :q!")
-      return
-    end
-  end
-  if preview.is_open() then
-    preview.close()
-  end
-  dismissed_id = id
 end
 
--- Every comment in the quickfix list, with the one under the cursor shown
--- in a card above it.
+-- Open the quickfix list without moving the source cursor or showing a card.
 ---@param filter? string only comments matching this
 function M.open(filter)
   if not window.close() then
@@ -347,11 +322,9 @@ function M.open(filter)
     pending_jump[bufnr] = nil
   end
   active_filter = filter
-  dismissed_id = nil
   local anchored, orphans = filtered(filter)
   if #anchored + #orphans == 0 then
     if list_id and vim.fn.getqflist({ id = 0 }).id == list_id then
-      preview.close()
       vim.fn.setqflist({}, "r", { items = {} })
       vim.cmd.cclose()
     end
@@ -359,38 +332,7 @@ function M.open(filter)
     notify.info("No comments")
     return false
   end
-  list_id = quickfix.list(anchored, orphans, function(index)
-    if not index then
-      preview.close()
-      return
-    end
-    local qf = vim.fn.getqflist({ items = 1 })
-    local data = index and qf.items[index] and qf.items[index].user_data
-    local id = data and data.scratch_comments_id
-    local entry = id
-      and vim.iter(views.anchored()):find(function(view)
-        return view.id == id
-      end)
-    if id ~= dismissed_id then
-      dismissed_id = nil
-    end
-    if window.current() or dismissed_id == id then
-      return
-    end
-    if entry then
-      preview.show(card.of(entry), id)
-    else
-      local orphan = id
-        and vim.iter(views.orphans()):find(function(comment)
-          return comment.id == id
-        end)
-      if orphan then
-        preview.show(card.of_orphan(orphan), id)
-      else
-        preview.close()
-      end
-    end
-  end)
+  list_id = quickfix.list(anchored, orphans)
   if not list_id then
     return
   end

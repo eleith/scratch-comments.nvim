@@ -62,10 +62,9 @@ end
 
 ---@param view ScratchComment|ScratchCommentView
 ---@param source_win integer
----@param panes ScratchFramePanes? visible preview to focus
 ---@param on_close? fun()
 ---@param on_saved? fun()
-function M.show(view, source_win, panes, on_close, on_saved)
+function M.show(view, source_win, on_close, on_saved)
   local frame
   if view.start_line then
     frame = card.of(view --[[@as ScratchCommentView]])
@@ -83,7 +82,7 @@ function M.show(view, source_win, panes, on_close, on_saved)
     source_win = source_win,
     on_close = on_close,
     on_saved = on_saved,
-  }, panes)
+  })
 end
 
 -- Opens an editor for a comment that does not exist yet; it is created when

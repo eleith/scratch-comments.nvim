@@ -1,6 +1,5 @@
 local frame = require("scratch_comments.ui.frame")
 local notify = require("scratch_comments.ui.notify")
-local preview = require("scratch_comments.ui.preview")
 
 local M = {}
 
@@ -30,12 +29,7 @@ local current
 
 ---@param spec ScratchFrame
 ---@param record ScratchCommentWindow
----@param panes? ScratchFramePanes existing preview panes to focus in place
-function M.open(spec, record, panes)
-  local promoted = panes ~= nil
-  if not panes then
-    preview.close()
-  end
+function M.open(spec, record)
   spec.on_close = function()
     if current and current.comment_win == record.comment_win then
       current = nil
@@ -49,22 +43,8 @@ function M.open(spec, record, panes)
     or "comment"
   local source_name = vim.fn.fnamemodify(source_buffer_name, ":t")
   spec.comment_name = source_name .. ":" .. record.line .. " [comment]"
-  if panes then
-    spec.lines = panes.lines
-    spec.backdrop = panes.backdrop
-    panes.update(spec)
-  else
-    panes = frame.open(spec)
-  end
+  local panes = frame.open(spec)
   local comment_win, comment_buf = panes.comment_win, panes.comment_buf
-  if promoted then
-    vim.api.nvim_buf_set_name(
-      comment_buf,
-      "scratch-comments://" .. comment_buf .. "/" .. spec.comment_name
-    )
-    vim.bo[comment_buf].modifiable = true
-    vim.api.nvim_set_current_win(comment_win)
-  end
   record.comment_win = comment_win
   current = record
 
@@ -82,8 +62,6 @@ function M.open(spec, record, panes)
   record.update = function(next_spec)
     next_spec.on_close = spec.on_close
     next_spec.on_save = spec.on_save
-    next_spec.lines = spec.lines
-    next_spec.backdrop = spec.backdrop
     panes.update(next_spec, true)
     spec = next_spec
     show_mode()
@@ -140,7 +118,7 @@ function M.close()
     return false
   end
   -- A command replacing the card (e.g. :CommentExport!) owns the next focus.
-  -- Only a user closing the card should return to its list.
+  -- Only a user closing the card should return to its source or list.
   open.on_close = nil
   pcall(vim.api.nvim_win_close, open.comment_win, true)
   return true

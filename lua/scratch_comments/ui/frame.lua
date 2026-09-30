@@ -24,9 +24,6 @@ end
 ---@field on_save? fun(text: string): boolean|string? false keeps the text unsaved; "deleted" closes the editor
 ---@field comment_title? string
 ---@field on_close? fun()
----@field enter? boolean focus the comment pane (default: true)
----@field backdrop? boolean dim the editor behind it (default: true)
----@field lines? integer rows to fit in, from the top (default: the editor's)
 
 ---@class ScratchFramePanes
 ---@field context_win integer
@@ -35,8 +32,6 @@ end
 ---@field comment_buf integer
 ---@field backdrop_win? integer
 ---@field update fun(spec: ScratchFrame, preserve_comment?: boolean)
----@field lines? integer preview area retained when focusing
----@field backdrop? boolean preview dimming retained when focusing
 
 -- Two stacked floats, centered: the commented lines above, the comment below.
 ---@param frame ScratchFrame
@@ -44,7 +39,7 @@ end
 function M.open(frame)
   ---@return { width: integer, col: integer, row: integer, context: integer, comment: integer }
   local function layout()
-    local lines = frame.lines or vim.o.lines
+    local lines = vim.o.lines
     local width = math.min(80, vim.o.columns - 4)
     local context = math.min(#frame.context, math.floor(lines * 0.4))
     local comment = math.min(math.max(#vim.split(frame.comment, "\n"), 5), math.floor(lines * 0.3))
@@ -79,7 +74,7 @@ function M.open(frame)
     }
   end
 
-  local dim = frame.backdrop ~= false and backdrop.open(frame.lines) or nil
+  local dim = backdrop.open()
   local context_place, comment_place = placement(layout())
   local border = (vim.o.winborder == "" or vim.o.winborder == "none") and "rounded" or nil
 
@@ -100,7 +95,7 @@ function M.open(frame)
   end
   local comment_win = vim.api.nvim_open_win(
     comment_buf,
-    frame.enter ~= false,
+    true,
     vim.tbl_extend(
       "error",
       comment_place,
@@ -135,7 +130,7 @@ function M.open(frame)
         pcall(vim.api.nvim_del_augroup_by_id, group)
         return
       end
-      backdrop.resize(dim, frame.lines)
+      backdrop.resize(dim)
       local context_resized, comment_resized = placement(layout())
       vim.api.nvim_win_set_config(context_win, context_resized)
       vim.api.nvim_win_set_config(comment_win, comment_resized)
@@ -170,8 +165,8 @@ function M.open(frame)
     comment_buf = comment_buf,
     backdrop_win = dim,
   }
-  -- A preview can change entries or become an editor without replacing the
-  -- floating windows. Keep the same placement rule for either state.
+  -- A parked comment can become orphaned when its source finishes loading.
+  -- Update the context without discarding any edits to the comment.
   function panes.update(spec, preserve_comment)
     frame = spec
     if preserve_comment then
@@ -188,7 +183,7 @@ function M.open(frame)
       vim.bo[comment_buf].modified = false
       vim.bo[comment_buf].modifiable = false
     end
-    backdrop.resize(dim, frame.lines)
+    backdrop.resize(dim)
     local context_next, comment_next = placement(layout())
     vim.api.nvim_win_set_config(context_win, context_next)
     vim.api.nvim_win_set_config(comment_win, comment_next)
