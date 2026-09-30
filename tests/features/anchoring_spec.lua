@@ -217,6 +217,35 @@ describe("a file's comments", function()
     expect.equality(items[#items].text, "[orphaned] on two")
   end)
 
+  it("parks a moved range at its current location and reattaches there", function()
+    local url = "review-test:///moved.lua"
+    vim.cmd.enew()
+    vim.api.nvim_buf_set_name(0, url)
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "one", "two" })
+    vim.bo.bufhidden = "wipe"
+    vim.cmd("2Comment")
+    helpers.write("on two")
+    vim.api.nvim_buf_set_lines(0, 0, 0, false, { "leading" })
+    local id = store.all()[#store.all()].id
+    expect.equality(
+      vim.iter(views.anchored()):find(function(view)
+        return view.id == id
+      end).start_line,
+      3
+    )
+    vim.cmd("enew!")
+    local comment = store.all()[#store.all()]
+    expect.equality(comment.state, "parked")
+    expect.equality(comment.last_location.start_line, 3)
+    expect.equality(comment.snippet, "two")
+    vim.api.nvim_buf_set_name(0, url)
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "leading", "one", "two" })
+    vim.api.nvim_exec_autocmds("BufEnter", { buffer = 0 })
+    vim.wait(0)
+    expect.equality(comment.state, nil)
+    expect.equality(views.in_buffer(vim.api.nvim_get_current_buf())[1].start_line, 3)
+  end)
+
   it("waits for a delayed URI read before reattaching", function()
     local url = "review-test:///later.lua"
     local pending

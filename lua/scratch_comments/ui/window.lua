@@ -22,7 +22,6 @@ local mode_names = {
 ---@field comment_win? integer
 ---@field on_close? fun()
 ---@field on_saved? fun()
----@field update? fun(spec: ScratchFrame)
 
 ---@type ScratchCommentWindow?
 local current
@@ -102,13 +101,6 @@ function M.open(spec, record)
       })
       vim.cmd.redraw()
     end
-  end
-  record.update = function(next_spec)
-    next_spec.on_close = spec.on_close
-    next_spec.on_save = spec.on_save
-    panes.update(next_spec, true)
-    spec = next_spec
-    show_mode()
   end
   show_mode()
   vim.api.nvim_create_autocmd("ModeChanged", { buffer = comment_buf, callback = show_mode })

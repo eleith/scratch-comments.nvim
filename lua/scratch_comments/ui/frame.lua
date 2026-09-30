@@ -32,7 +32,6 @@ end
 ---@field comment_win integer
 ---@field comment_buf integer
 ---@field backdrop_win? integer
----@field update fun(spec: ScratchFrame, preserve_comment?: boolean)
 
 -- Two stacked floats, centered: the commented lines above, the comment below.
 ---@param frame ScratchFrame
@@ -260,29 +259,6 @@ function M.open(frame, parent)
     comment_buf = comment_buf,
     backdrop_win = dim,
   }
-  -- A parked comment can become orphaned when its source finishes loading.
-  -- Update the context without discarding any edits to the comment.
-  function panes.update(spec, preserve_comment)
-    frame = spec
-    if preserve_comment then
-      spec.comment = table.concat(vim.api.nvim_buf_get_lines(comment_buf, 0, -1, false), "\n")
-    end
-    vim.bo[context_buf].modifiable = true
-    vim.api.nvim_buf_set_lines(context_buf, 0, -1, false, spec.context)
-    vim.bo[context_buf].modifiable = false
-    vim.bo[context_buf].modified = false
-    vim.bo[context_buf].filetype = spec.filetype
-    if not preserve_comment then
-      vim.bo[comment_buf].modifiable = true
-      vim.api.nvim_buf_set_lines(comment_buf, 0, -1, false, vim.split(spec.comment, "\n"))
-      vim.bo[comment_buf].modified = false
-      vim.bo[comment_buf].modifiable = false
-    end
-    backdrop.resize(dim, parent)
-    local context_next, comment_next = placement(layout())
-    vim.api.nvim_win_set_config(context_win, context_next)
-    vim.api.nvim_win_set_config(comment_win, comment_next)
-  end
   return panes
 end
 

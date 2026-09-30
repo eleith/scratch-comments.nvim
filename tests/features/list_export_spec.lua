@@ -297,6 +297,21 @@ describe("the comment list manager", function()
     vim.cmd.cclose()
   end)
 
+  it("removes edited comments that no longer match the active filter", function()
+    for _, comment in ipairs(store.all()) do
+      store.update(comment.id, { comment = "ZZQX9 " .. comment.comment })
+    end
+    vim.cmd("CommentList ZZQX9")
+    local removed = vim.fn.getqflist()[1].user_data.scratch_comments_id
+    vim.cmd.Comment()
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "changed" })
+    vim.cmd.write()
+    local items = vim.fn.getqflist()
+    expect.equality(#items, 1)
+    expect.equality(items[1].text, "ZZQX9 on c")
+    expect.no_equality(items[1].user_data.scratch_comments_id, removed)
+  end)
+
   it("deletes the opened comment and keeps the filtered list", function()
     vim.cmd("CommentList export-fixture")
     local removed = vim.fn.getqflist()[1].user_data.scratch_comments_id
@@ -362,6 +377,22 @@ describe("the comment list manager", function()
     expect.equality(#store.all(), 1)
     expect.equality(store.all()[1].comment, "on c")
     vim.cmd.cclose()
+  end)
+
+  it("uses normal <CR> navigation when another quickfix list replaces ours", function()
+    local other = helpers.buffer("other-qf.lua", { "first", "second" })
+    vim.cmd.CommentList()
+    vim.fn.setqflist({}, " ", {
+      items = {
+        { bufnr = other, lnum = 1, text = "first" },
+        { bufnr = other, lnum = 2, text = "second" },
+      },
+    })
+    vim.api.nvim_win_set_cursor(0, { 2, 0 })
+    vim.cmd("normal \r")
+    expect.equality(vim.api.nvim_get_current_buf(), other)
+    expect.equality(vim.api.nvim_win_get_cursor(0)[1], 2)
+    expect.equality(#helpers.every_float(), 0)
   end)
 
   it("does not open a card from another plugin's quickfix list", function()
