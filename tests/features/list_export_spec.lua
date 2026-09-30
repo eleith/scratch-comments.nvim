@@ -422,6 +422,40 @@ describe("the comment list manager", function()
     expect.equality(vim.api.nvim_win_get_cursor(0)[1], 1)
   end)
 
+  it("returns to quickfix after an asynchronous source becomes an orphan", function()
+    local url = "review-test:///orphan.lua"
+    local pending
+    vim.api.nvim_create_autocmd("BufReadCmd", {
+      pattern = "review-test:///*",
+      once = true,
+      callback = function(args)
+        pending = args.buf
+      end,
+    })
+    vim.cmd.enew()
+    vim.api.nvim_buf_set_name(0, url)
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "first", "second" })
+    vim.bo.bufhidden = "wipe"
+    vim.cmd("2Comment")
+    helpers.write("async orphan")
+    local id = store.all()[#store.all()].id
+    vim.cmd("enew!")
+    vim.cmd.CommentList()
+    local qf_win = vim.api.nvim_get_current_win()
+    local index = vim.iter(vim.fn.getqflist()):enumerate():find(function(_, item)
+      return item.user_data.scratch_comments_id == id
+    end)
+    vim.api.nvim_win_set_cursor(qf_win, { index, 0 })
+    vim.cmd("normal \r")
+    vim.api.nvim_buf_set_lines(pending, 0, -1, false, { "first", "changed" })
+    vim.api.nvim_exec_autocmds("BufReadPost", { buffer = pending })
+    vim.wait(0)
+    expect.equality(store.all()[#store.all()].state, "inactive")
+    expect.equality(vim.api.nvim_get_current_win(), qf_win)
+    expect.equality(vim.fn.getqflist()[index].text, "[orphaned] async orphan")
+    expect.equality(#helpers.every_float(), 0)
+  end)
+
   local function jump_to_pending_source(url)
     local pending
     vim.api.nvim_create_autocmd("BufReadCmd", {
@@ -480,6 +514,17 @@ describe("the comment list manager", function()
       expect.equality(vim.fn.getqflist()[1].text, "other")
     end
   )
+
+  it("refreshes the list after leaving a delayed jump that becomes an orphan", function()
+    local pending, qf_win = jump_to_pending_source("review-test:///left-source.lua")
+    vim.api.nvim_set_current_win(qf_win)
+    vim.api.nvim_buf_set_lines(pending, 0, -1, false, { "first", "changed" })
+    vim.api.nvim_exec_autocmds("BufReadPost", { buffer = pending })
+    vim.wait(0)
+    expect.equality(store.all()[#store.all()].state, "inactive")
+    expect.equality(vim.api.nvim_get_current_win(), qf_win)
+    expect.equality(vim.fn.getqflist()[#vim.fn.getqflist()].text, "[orphaned] async orphan")
+  end)
 
   it("doesn't move the source cursor after leaving an asynchronous jump", function()
     local url = "review-test:///late-cursor.lua"

@@ -162,6 +162,7 @@ function M.attach_buffer(bufnr, definitive)
   end
   if changed then
     M.redraw(bufnr)
+    require("scratch_comments.list").source_updated(bufnr)
   end
 end
 
