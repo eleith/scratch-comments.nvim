@@ -21,6 +21,8 @@ just text.
 
 ## install
 
+Requires **Neovim 0.12 or newer**. No setup or build step is needed.
+
 With `lazy.nvim`:
 
 ```lua
@@ -30,8 +32,11 @@ With `lazy.nvim`:
 With `vim.pack`:
 
 ```lua
-vim.pack.add({ { src = "https://git.eleith.com/eleith/scratch-comments.nvim" } })
+vim.pack.add({ { src = "https://github.com/eleith/scratch-comments.nvim" } })
 ```
+
+The repository is also available at
+[git.eleith.com](https://git.eleith.com/eleith/scratch-comments.nvim).
 
 ## use
 
