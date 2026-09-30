@@ -4,22 +4,23 @@ local group = "ScratchCommentBackdrop"
 
 vim.api.nvim_set_hl(0, group, { bg = "#000000", default = true })
 
--- Dims the editor behind the comment window. Blending needs true colors, so
--- without them there is nothing to dim with.
----@param lines? integer rows to cover, from the top (default: the editor's)
+-- Dim only the editing window, leaving quickfix and other splits readable.
+-- Blending needs true colors, so without them there is nothing to dim with.
+---@param parent integer editing window
 ---@return integer? win
-function M.open(lines)
+function M.open(parent)
   if not vim.o.termguicolors then
     return nil
   end
   local bufnr = vim.api.nvim_create_buf(false, true)
   vim.bo[bufnr].bufhidden = "wipe"
   local win = vim.api.nvim_open_win(bufnr, false, {
-    relative = "editor",
+    relative = "win",
+    win = parent,
     row = 0,
     col = 0,
-    width = vim.o.columns,
-    height = lines or vim.o.lines,
+    width = vim.api.nvim_win_get_width(parent),
+    height = vim.api.nvim_win_get_height(parent),
     focusable = false,
     style = "minimal",
     -- Below the comment window, which opens at the default 50.
@@ -33,16 +34,17 @@ function M.open(lines)
   return win
 end
 
----@param win? integer
----@param lines? integer
-function M.resize(win, lines)
-  if win and vim.api.nvim_win_is_valid(win) then
+---@param win? integer backdrop window
+---@param parent integer editing window
+function M.resize(win, parent)
+  if win and vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_is_valid(parent) then
     vim.api.nvim_win_set_config(win, {
-      relative = "editor",
+      relative = "win",
+      win = parent,
       row = 0,
       col = 0,
-      width = vim.o.columns,
-      height = lines or vim.o.lines,
+      width = vim.api.nvim_win_get_width(parent),
+      height = vim.api.nvim_win_get_height(parent),
     })
   end
 end

@@ -34,6 +34,11 @@ describe("title", function()
 end)
 
 describe("fit", function()
+  it("returns no title when no room is available", function()
+    expect.equality(location.fit("app.lua", 0), "")
+    expect.equality(location.fit("app.lua", -1), "")
+  end)
+
   it("leaves text that fits alone", function()
     expect.equality(location.fit("app.lua [line 3]", 16), "app.lua [line 3]")
   end)

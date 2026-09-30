@@ -38,6 +38,9 @@ end
 ---@param width integer
 ---@return string
 function M.fit(text, width)
+  if width <= 0 then
+    return ""
+  end
   local start = 0
   while vim.api.nvim_strwidth(vim.fn.strcharpart(text, start)) > width do
     start = start + 1

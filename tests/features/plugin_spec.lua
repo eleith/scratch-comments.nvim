@@ -21,7 +21,14 @@ end
 
 describe("the plugin", function()
   it("defines its commands without setup()", function()
-    expect.equality(fresh("io.write(vim.fn.exists(':CommentShow'))"), "2")
+    expect.equality(fresh("io.write(vim.fn.exists(':CommentList'))"), "2")
+  end)
+
+  it("defines :CommentDelete but not the old navigation commands", function()
+    expect.equality(fresh("io.write(vim.fn.exists(':CommentDelete'))"), "2")
+    for _, command in ipairs({ "CommentShow", "CommentNext", "CommentPrev" }) do
+      expect.equality(fresh("io.write(vim.fn.exists(':" .. command .. "'))"), "0")
+    end
   end)
 
   it("loads nothing until a command runs", function()

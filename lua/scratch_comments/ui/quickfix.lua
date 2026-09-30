@@ -9,54 +9,15 @@ local function summary(text)
 end
 
 -- Quickfix rather than a picker: any quickfix front-end (Trouble, Snacks,
--- Telescope, nvim-bqf) can display it.
--- Reports the entry the cursor is on, and nil once the list is gone.
----@param on_entry? fun(index: integer?)
-local function follow(on_entry)
-  if not on_entry then
-    return
-  end
-  local group = vim.api.nvim_create_augroup("scratch_comments_quickfix", { clear = true })
-  local bufnr = vim.api.nvim_get_current_buf()
-  vim.api.nvim_create_autocmd({ "CursorMoved", "BufEnter" }, {
-    group = group,
-    buffer = bufnr,
-    callback = function()
-      on_entry(vim.api.nvim_win_get_cursor(0)[1])
-    end,
-  })
-  for _, event in ipairs({ "BufLeave", "BufWipeout" }) do
-    vim.api.nvim_create_autocmd(event, {
-      group = group,
-      buffer = bufnr,
-      callback = function()
-        on_entry(nil)
-      end,
-    })
-  end
-  vim.api.nvim_create_autocmd("WinClosed", {
-    group = group,
-    pattern = tostring(vim.api.nvim_get_current_win()),
-    once = true,
-    callback = function()
-      on_entry(nil)
-    end,
-  })
-  on_entry(vim.api.nvim_win_get_cursor(0)[1])
-end
-
+-- Telescope, nvim-bqf) can display the entries.
 ---@param views ScratchCommentView[]
 ---@param orphans ScratchComment[]
----@param on_entry? fun(index: integer?) called with the entry the cursor is on
-function M.list(views, orphans, on_entry)
-  if #views + #orphans == 0 then
-    notify.info("No comments")
-    return
-  end
-
+---@return table[]
+function M.items(views, orphans)
   local entries = vim.tbl_map(function(comment)
     return {
-      filename = comment.file_path,
+      filename = comment.source_name,
+      user_data = { scratch_comments_id = comment.id },
       lnum = comment.start_line,
       end_lnum = comment.end_line,
       col = comment.start_col and comment.start_col + 1,
@@ -65,15 +26,27 @@ function M.list(views, orphans, on_entry)
     }
   end, views)
   for _, comment in ipairs(orphans) do
-    table.insert(
-      entries,
-      { filename = comment.file_path, text = "[orphaned] " .. summary(comment.comment) }
-    )
+    table.insert(entries, {
+      filename = comment.source_name,
+      user_data = { scratch_comments_id = comment.id },
+      text = "[orphaned] " .. summary(comment.comment),
+    })
   end
 
-  vim.fn.setqflist({}, " ", { title = "Comments", items = entries })
+  return entries
+end
+
+---@param views ScratchCommentView[]
+---@param orphans ScratchComment[]
+function M.list(views, orphans)
+  if #views + #orphans == 0 then
+    notify.info("No comments")
+    return
+  end
+
+  vim.fn.setqflist({}, " ", { title = "Comments", items = M.items(views, orphans) })
   vim.cmd.copen()
-  follow(on_entry)
+  return vim.fn.getqflist({ id = 0 }).id
 end
 
 return M

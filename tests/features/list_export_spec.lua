@@ -1,6 +1,7 @@
 local clipboard = require("scratch_comments.export.clipboard")
 local helpers = require("helpers")
 local scratch = require("scratch_comments")
+local store = require("scratch_comments.model.store")
 local expect = MiniTest.expect
 
 local copy = clipboard.copy
@@ -103,6 +104,473 @@ describe(":CommentList", function()
   end)
 end)
 
+describe("the comment list manager", function()
+  it("edits a comment in the same card, then refreshes the list", function()
+    vim.cmd("CommentList")
+    local id = vim.fn.getqflist()[1].user_data.scratch_comments_id
+    vim.cmd.Comment()
+    expect.equality(helpers.text(), "on a")
+    expect.equality(vim.bo.modifiable, true)
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "revised" })
+    vim.cmd.write()
+    expect.equality(vim.fn.getqflist()[1].text, "revised")
+    vim.cmd.quit()
+    vim.wait(0)
+    expect.equality(vim.bo.buftype, "quickfix")
+    expect.equality(vim.fn.getqflist()[1].text, "revised")
+    expect.equality(vim.fn.getqflist()[1].user_data.scratch_comments_id, id)
+    vim.cmd.cclose()
+  end)
+
+  it("doesn't reopen a list the user closed while editing", function()
+    vim.cmd.CommentList()
+    vim.cmd.Comment()
+    vim.cmd.cclose()
+    vim.cmd.quit()
+    vim.wait(0)
+    expect.equality(vim.fn.getqflist({ winid = 0 }).winid, 0)
+  end)
+
+  it("leaves the source cursor alone while browsing", function()
+    vim.api.nvim_win_set_cursor(0, { 1, 0 })
+    local source_win = vim.api.nvim_get_current_win()
+    vim.cmd.CommentList()
+    vim.api.nvim_win_set_cursor(0, { 2, 0 })
+    vim.api.nvim_exec_autocmds("CursorMoved", { buffer = 0 })
+    expect.equality(vim.api.nvim_win_get_cursor(source_win)[1], 1)
+    vim.cmd("normal \r")
+    expect.equality(vim.api.nvim_win_get_cursor(source_win)[1], 3)
+    expect.equality(#helpers.every_float(), 0)
+  end)
+
+  it("doesn't return an orphan editor to another plugin's quickfix list", function()
+    vim.cmd("1d")
+    helpers.text_changed()
+    local file_win = vim.api.nvim_get_current_win()
+    vim.cmd.CommentList()
+    vim.api.nvim_win_set_cursor(0, { 2, 0 })
+    vim.cmd.Comment()
+    vim.fn.setqflist({}, " ", { items = { { filename = "other.lua", lnum = 1, text = "other" } } })
+    vim.cmd.quit()
+    vim.api.nvim_set_current_win(file_win)
+    vim.wait(0)
+    expect.equality(vim.api.nvim_get_current_win(), file_win)
+  end)
+
+  it("keeps focus on an export replacing a manager-opened card", function()
+    vim.cmd.CommentList()
+    vim.cmd.Comment()
+    vim.cmd("CommentExport!")
+    vim.wait(0)
+    expect.equality(vim.bo.buftype, "nofile")
+    expect.equality(vim.bo.filetype, "markdown")
+    vim.cmd.cclose()
+  end)
+
+  it("edits a comment whose source was wiped", function()
+    vim.cmd("bwipeout! " .. source)
+    vim.cmd.CommentList()
+    vim.cmd.Comment()
+    expect.equality(helpers.text(), "on a")
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "revised parked" })
+    vim.cmd("wq")
+    vim.wait(0)
+    expect.equality(vim.fn.getqflist()[1].text, "revised parked")
+    expect.equality(store.all()[2].state, "parked")
+    vim.cmd.cclose()
+  end)
+
+  it("does not guess a jump for an orphan; :Comment opens its card", function()
+    vim.cmd("1d")
+    helpers.text_changed()
+    vim.cmd.CommentList()
+    vim.api.nvim_win_set_cursor(0, { 2, 0 })
+    vim.api.nvim_exec_autocmds("CursorMoved", { buffer = 0 })
+    local qf_win = vim.api.nvim_get_current_win()
+    vim.cmd("normal \r")
+    expect.equality(vim.api.nvim_get_current_win(), qf_win)
+    expect.equality(#helpers.every_float(), 0)
+    expect.equality(
+      helpers.notified()[#helpers.notified()],
+      "This comment has no source location; use :Comment to edit it"
+    )
+    vim.cmd.Comment()
+    expect.equality(helpers.text(), "on a")
+    local dim = vim.iter(helpers.every_float()):find(function(win)
+      return vim.w[win].scratch_comments_backdrop
+    end)
+    local parent = assert(vim.api.nvim_win_get_config(dim).win)
+    expect.equality(vim.api.nvim_win_get_buf(parent), source)
+    expect.no_equality(parent, qf_win)
+    vim.cmd.quit()
+    vim.wait(0)
+    expect.equality(vim.api.nvim_get_current_win(), qf_win)
+    expect.equality(vim.bo.buftype, "quickfix")
+  end)
+
+  it("places an orphan card over a file, not an export scratch split", function()
+    vim.cmd("1d")
+    helpers.text_changed()
+    vim.cmd("CommentExport!")
+    expect.equality(vim.bo.buftype, "nofile")
+    vim.cmd.CommentList()
+    vim.api.nvim_win_set_cursor(0, { 2, 0 })
+    vim.cmd.Comment()
+    local dim = vim.iter(helpers.every_float()):find(function(win)
+      return vim.w[win].scratch_comments_backdrop
+    end)
+    local parent = assert(vim.api.nvim_win_get_config(dim).win)
+    expect.equality(vim.api.nvim_win_get_buf(parent), source)
+  end)
+
+  it("makes a file area if only quickfix remains for an orphan", function()
+    vim.cmd("1d")
+    helpers.text_changed()
+    vim.cmd.CommentList()
+    local qf_win = vim.api.nvim_get_current_win()
+    local file_win = vim.fn.bufwinid(vim.api.nvim_buf_get_name(source))
+    vim.api.nvim_win_close(file_win, true)
+    vim.api.nvim_win_set_cursor(qf_win, { 2, 0 })
+    vim.cmd.Comment()
+    local dim = vim.iter(helpers.every_float()):find(function(win)
+      return vim.w[win].scratch_comments_backdrop
+    end)
+    local parent = assert(vim.api.nvim_win_get_config(dim).win)
+    expect.no_equality(parent, qf_win)
+    expect.equality(vim.api.nvim_win_is_valid(qf_win), true)
+    vim.cmd.quit()
+    vim.wait(0)
+    expect.equality(vim.api.nvim_get_current_win(), qf_win)
+  end)
+
+  it("keeps quickfix usable if there is no room to open an orphan card", function()
+    vim.cmd("1d")
+    helpers.text_changed()
+    vim.cmd.CommentList()
+    local qf_win = vim.api.nvim_get_current_win()
+    vim.api.nvim_win_close(vim.fn.bufwinid(vim.api.nvim_buf_get_name(source)), true)
+    local min_height, preferred = vim.o.winminheight, vim.o.winheight
+    local ok = pcall(function()
+      vim.o.winheight = 12
+      vim.o.winminheight = 12
+      vim.api.nvim_win_set_cursor(qf_win, { 2, 0 })
+      vim.cmd.Comment()
+    end)
+    vim.o.winminheight = min_height
+    vim.o.winheight = preferred
+    expect.equality(ok, true)
+    expect.equality(vim.api.nvim_get_current_win(), qf_win)
+    expect.equality(#helpers.floats(), 0)
+    expect.equality(
+      helpers.notified()[#helpers.notified()],
+      "Make room for an editing window to open this comment"
+    )
+  end)
+
+  it("deletes an orphan by saving its card empty", function()
+    vim.api.nvim_set_current_buf(source)
+    vim.cmd("1d")
+    helpers.text_changed()
+    vim.cmd.CommentList()
+    vim.api.nvim_win_set_cursor(0, { 2, 0 })
+    vim.api.nvim_exec_autocmds("CursorMoved", { buffer = 0 })
+    vim.cmd.Comment()
+    expect.equality(helpers.text(), "on a")
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "" })
+    vim.cmd.write()
+    vim.wait(0)
+    expect.equality(#store.all(), 1)
+    expect.equality(vim.bo.buftype, "quickfix")
+    expect.equality(#vim.fn.getqflist(), 1)
+    vim.cmd.cclose()
+  end)
+
+  it("deletes the opened comment and keeps the filtered list", function()
+    vim.cmd("CommentList export-fixture")
+    local removed = vim.fn.getqflist()[1].user_data.scratch_comments_id
+    vim.cmd.Comment()
+    vim.cmd.CommentDelete()
+    expect.equality(#store.all(), 1)
+    expect.no_equality(store.all()[1].id, removed)
+    expect.equality(#vim.fn.getqflist(), 1)
+    vim.cmd.cclose()
+  end)
+
+  it("lists and exports comments after their source was wiped", function()
+    vim.cmd("bwipeout! " .. source)
+    local data = vim.json.decode(scratch.render("json"))
+    expect.equality(#data.comments, 2)
+    expect.equality(data.comments[1].snippet, "local a = 1")
+    vim.cmd.CommentList()
+    expect.equality(#vim.fn.getqflist(), 2)
+    vim.cmd.cclose()
+  end)
+
+  it("deletes a parked comment after opening its card", function()
+    vim.cmd("bwipeout! " .. source)
+    expect.equality(#store.all(), 2)
+    vim.cmd.CommentList()
+    vim.cmd.Comment()
+    vim.cmd.CommentDelete()
+    expect.equality(#store.all(), 1)
+    expect.equality(store.all()[1].comment, "on c")
+    vim.cmd.cclose()
+  end)
+
+  it("deletes a filtered orphan directly from quickfix", function()
+    vim.cmd("1d")
+    helpers.text_changed()
+    vim.cmd("CommentList 1")
+    local qf_win = vim.api.nvim_get_current_win()
+    expect.equality(#vim.fn.getqflist(), 1)
+    expect.equality(
+      vim.fn.getqflist()[1].user_data.scratch_comments_id,
+      vim.iter(store.all()):find(function(comment)
+        return comment.comment == "on a"
+      end).id
+    )
+    vim.cmd.CommentDelete()
+    expect.equality(#store.all(), 1)
+    expect.equality(store.all()[1].comment, "on c")
+    expect.equality(vim.api.nvim_win_is_valid(qf_win), false)
+  end)
+
+  it("deletes an inactive comment from the list", function()
+    vim.cmd.cclose()
+    vim.api.nvim_set_current_buf(source)
+    vim.cmd("1d")
+    helpers.text_changed()
+    vim.cmd.CommentList()
+    local qf = vim.fn.getqflist()
+    local index = vim.iter(qf):enumerate():find(function(_, item)
+      return item.text:find("[orphaned]", 1, true) ~= nil
+    end)
+    vim.api.nvim_win_set_cursor(0, { index, 0 })
+    vim.cmd.CommentDelete()
+    expect.equality(#store.all(), 1)
+    expect.equality(store.all()[1].comment, "on c")
+    vim.cmd.cclose()
+  end)
+
+  it("does not open a card from another plugin's quickfix list", function()
+    vim.cmd.CommentList()
+    vim.fn.setqflist({}, " ", { items = { { filename = "other.lua", lnum = 1, text = "other" } } })
+    vim.cmd.Comment()
+    expect.equality(#helpers.every_float(), 0)
+    expect.equality(helpers.notified()[#helpers.notified()], "Not a Scratch Comments list")
+    vim.cmd.cclose()
+  end)
+
+  it("does not open a card for a stale quickfix row", function()
+    vim.cmd.CommentList()
+    local items = vim.fn.getqflist()
+    items[1].user_data = {}
+    vim.fn.setqflist({}, "r", { items = items })
+    vim.cmd.Comment()
+    expect.equality(#helpers.every_float(), 0)
+    expect.equality(helpers.notified()[#helpers.notified()], "This comment is gone")
+    vim.cmd.cclose()
+  end)
+
+  it("does not delete another plugin's quickfix entry", function()
+    vim.cmd.CommentList()
+    vim.fn.setqflist({}, " ", { items = { { filename = "other.lua", lnum = 1, text = "other" } } })
+    vim.cmd.CommentDelete()
+    expect.equality(#store.all(), 2)
+    vim.cmd.cclose()
+  end)
+
+  it("jumps to a parked URI after a delayed read", function()
+    local url = "review-test:///comments.lua"
+    local pending
+    vim.api.nvim_create_autocmd("BufReadCmd", {
+      pattern = "review-test:///*",
+      once = true,
+      callback = function(args)
+        pending = args.buf
+      end,
+    })
+    vim.cmd("enew!")
+    vim.api.nvim_buf_set_name(0, url)
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "first", "second" })
+    vim.bo.bufhidden = "wipe"
+    vim.cmd("2Comment")
+    helpers.write("URI comment")
+    local id = store.all()[#store.all()].id
+    vim.cmd("enew!")
+    vim.cmd.CommentList()
+    local index
+    for i, item in ipairs(vim.fn.getqflist()) do
+      if item.user_data.scratch_comments_id == id then
+        index = i
+      end
+    end
+    vim.api.nvim_win_set_cursor(0, { index, 0 })
+    vim.cmd("normal \r")
+    local source_win = vim.fn.bufwinid(url)
+    expect.equality(vim.api.nvim_win_get_buf(source_win), pending)
+    expect.equality(store.all()[#store.all()].state, "parked")
+    vim.api.nvim_buf_set_lines(pending, 0, -1, false, { "first", "second" })
+    vim.wait(0)
+    expect.equality(store.all()[#store.all()].state, nil)
+    expect.equality(vim.api.nvim_win_get_cursor(source_win)[1], 2)
+    vim.cmd.quit()
+    vim.wait(0)
+    vim.api.nvim_win_set_cursor(0, { 1, 0 })
+    vim.api.nvim_buf_set_lines(pending, 0, 1, false, { "updated" })
+    vim.wait(0)
+    expect.equality(vim.api.nvim_win_get_cursor(0)[1], 1)
+  end)
+
+  local function jump_to_pending_source(url)
+    local pending
+    vim.api.nvim_create_autocmd("BufReadCmd", {
+      pattern = "review-test:///*",
+      once = true,
+      callback = function(args)
+        pending = args.buf
+      end,
+    })
+    vim.cmd("enew!")
+    vim.api.nvim_buf_set_name(0, url)
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "first", "second" })
+    vim.bo.bufhidden = "wipe"
+    vim.cmd("2Comment")
+    helpers.write("async orphan")
+    vim.cmd("enew!")
+    vim.cmd.CommentList()
+    local qf_win = vim.api.nvim_get_current_win()
+    local id = store.all()[#store.all()].id
+    local index = vim.iter(vim.fn.getqflist()):enumerate():find(function(_, item)
+      return item.user_data.scratch_comments_id == id
+    end)
+    vim.api.nvim_win_set_cursor(qf_win, { index, 0 })
+    vim.cmd("normal \r")
+    return pending, qf_win
+  end
+
+  it("does not return to a closed list when a delayed read invalidates a location", function()
+    local pending, qf_win = jump_to_pending_source("review-test:///closed-list.lua")
+    local source_win = vim.api.nvim_get_current_win()
+    vim.cmd.cclose()
+    vim.api.nvim_buf_set_lines(pending, 0, -1, false, { "first", "changed" })
+    vim.api.nvim_exec_autocmds("BufReadPost", { buffer = pending })
+    vim.wait(0)
+    expect.equality(store.all()[#store.all()].state, "inactive")
+    expect.equality(vim.api.nvim_win_is_valid(qf_win), false)
+    expect.equality(vim.api.nvim_get_current_win(), source_win)
+  end)
+
+  it(
+    "does not enter a replacement quickfix list when a delayed read invalidates a location",
+    function()
+      local pending, qf_win = jump_to_pending_source("review-test:///replaced-list.lua")
+      local source_win = vim.api.nvim_get_current_win()
+      vim.fn.setqflist(
+        {},
+        " ",
+        { items = { { filename = "other.lua", lnum = 1, text = "other" } } }
+      )
+      vim.api.nvim_buf_set_lines(pending, 0, -1, false, { "first", "changed" })
+      vim.api.nvim_exec_autocmds("BufReadPost", { buffer = pending })
+      vim.wait(0)
+      expect.equality(store.all()[#store.all()].state, "inactive")
+      expect.equality(vim.api.nvim_get_current_win(), source_win)
+      expect.equality(vim.api.nvim_win_is_valid(qf_win), true)
+      expect.equality(vim.fn.getqflist()[1].text, "other")
+    end
+  )
+
+  it("doesn't move the source cursor after leaving an asynchronous jump", function()
+    local url = "review-test:///late-cursor.lua"
+    local pending
+    vim.api.nvim_create_autocmd("BufReadCmd", {
+      pattern = "review-test:///*",
+      once = true,
+      callback = function(args)
+        pending = args.buf
+      end,
+    })
+    vim.cmd.enew()
+    vim.api.nvim_buf_set_name(0, url)
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "first", "second" })
+    vim.bo.bufhidden = "wipe"
+    vim.cmd("2Comment")
+    helpers.write("late")
+    vim.cmd("enew!")
+    vim.cmd.CommentList()
+    local qf_win = vim.api.nvim_get_current_win()
+    local index = vim.iter(vim.fn.getqflist()):enumerate():find(function(_, item)
+      return item.user_data.scratch_comments_id == store.all()[#store.all()].id
+    end)
+    vim.api.nvim_win_set_cursor(0, { index, 0 })
+    vim.cmd("normal \r")
+    local editor_win = vim.api.nvim_get_current_win()
+    local source_win = vim.fn.bufwinid(url)
+    vim.api.nvim_win_set_cursor(source_win, { 1, 0 })
+    vim.api.nvim_set_current_win(qf_win)
+    vim.api.nvim_set_current_win(editor_win)
+    vim.api.nvim_buf_set_lines(pending, 0, -1, false, { "first", "second" })
+    vim.wait(0)
+    expect.equality(vim.api.nvim_win_get_cursor(source_win)[1], 1)
+  end)
+
+  it("does not navigate to stale source lines after a mismatched reload", function()
+    vim.cmd.edit("tests/fixtures/lifecycle.txt")
+    vim.api.nvim_buf_set_lines(0, 0, 1, false, { "unsaved source" })
+    vim.cmd.Comment()
+    helpers.write("comment on unsaved source")
+    local wanted = store.all()[#store.all()].id
+    vim.cmd("bdelete!")
+    vim.cmd.CommentList()
+    local qf_win = vim.api.nvim_get_current_win()
+    local index = vim.iter(vim.fn.getqflist()):enumerate():find(function(_, item)
+      return item.user_data.scratch_comments_id == wanted
+    end)
+    vim.api.nvim_win_set_cursor(0, { index, 0 })
+    vim.cmd("normal \r")
+    vim.wait(0)
+    expect.equality(vim.api.nvim_get_current_win(), qf_win)
+    expect.equality(#helpers.every_float(), 0)
+    expect.equality(vim.fn.getqflist()[index].text:find("[orphaned]", 1, true), 1)
+    vim.cmd.Comment()
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "unsaved edit" })
+    vim.wait(0)
+    expect.equality(store.all()[#store.all()].state, "inactive")
+    local context_win = helpers.panes()
+    expect.equality(
+      helpers.text(vim.api.nvim_win_get_buf(context_win)),
+      "The lines this comment was on are gone."
+    )
+    expect.equality(helpers.text(), "unsaved edit")
+    expect.equality(vim.bo.modified, true)
+    vim.cmd("q!")
+    vim.wait(0)
+    expect.equality(vim.api.nvim_get_current_win(), qf_win)
+  end)
+
+  it("jumps to a parked file and restores its comment", function()
+    vim.cmd("edit! tests/fixtures/lifecycle.txt")
+    vim.cmd.Comment()
+    helpers.write("in a real file")
+    local wanted = store.all()[#store.all()].id
+    vim.cmd("bdelete")
+    vim.cmd.CommentList()
+    local index
+    for i, item in ipairs(vim.fn.getqflist()) do
+      if item.user_data.scratch_comments_id == wanted then
+        index = i
+      end
+    end
+    vim.api.nvim_win_set_cursor(0, { index, 0 })
+    vim.cmd("normal \r")
+    vim.wait(0)
+    expect.equality(vim.api.nvim_buf_get_name(0), store.all()[#store.all()].source_name)
+    expect.equality(#helpers.every_float(), 0)
+    expect.equality(store.all()[#store.all()].state, nil)
+  end)
+end)
+
 describe("markdown", function()
   it("names a range's lines", function()
     vim.cmd("1,2Comment")
@@ -156,103 +624,187 @@ describe(":CommentList with a filter", function()
 end)
 
 describe("one card at a time", function()
-  it(":CommentList replaces an open comment window", function()
-    vim.cmd("CommentShow")
+  it(":CommentList closes an open comment window without opening another", function()
+    vim.cmd.CommentList()
+    vim.cmd.Comment()
     expect.equality(#helpers.floats(), 2)
     vim.cmd("CommentList")
-    expect.equality(#helpers.floats(), 2)
+    expect.equality(#helpers.floats(), 0)
     expect.equality(vim.bo.buftype, "quickfix")
   end)
 
   it(":CommentList keeps an unsaved comment, and says so", function()
-    vim.cmd("CommentShow")
+    vim.cmd.CommentList()
+    vim.cmd.Comment()
     vim.api.nvim_buf_set_lines(0, 0, -1, false, { "unsaved" })
     vim.cmd("CommentList")
     expect.equality(helpers.text(), "unsaved")
     expect.equality(helpers.notified()[#helpers.notified()], "Save or discard the comment first")
   end)
 
+  it(":Comment keeps unsaved edits when selecting another row", function()
+    vim.cmd.CommentList()
+    local qf_win = vim.api.nvim_get_current_win()
+    vim.cmd.Comment()
+    local card_win = vim.api.nvim_get_current_win()
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "unsaved" })
+    vim.api.nvim_set_current_win(qf_win)
+    vim.api.nvim_win_set_cursor(qf_win, { 2, 0 })
+    vim.cmd.Comment()
+    expect.equality(#helpers.floats(), 2)
+    expect.equality(helpers.notified()[#helpers.notified()], "Save or discard the comment first")
+    expect.equality(helpers.text(vim.api.nvim_win_get_buf(card_win)), "unsaved")
+    vim.api.nvim_set_current_win(card_win)
+    vim.cmd("q!")
+  end)
+
   it(":CommentExport! closes the comment window first", function()
-    vim.cmd("CommentShow")
+    vim.cmd.CommentList()
+    vim.cmd.Comment()
     vim.cmd("CommentExport!")
     expect.equality(#helpers.every_float(), 0)
     expect.equality(vim.bo.buftype, "nofile")
   end)
 
-  it("a comment window replaces the list's card", function()
+  it("opens a new comment even with the list visible", function()
     vim.cmd("CommentList")
     vim.cmd("wincmd k")
     vim.cmd("2Comment")
     expect.equality(#helpers.floats(), 2)
+    helpers.write("on b")
+    expect.equality(#vim.fn.getqflist(), 3)
+    expect.equality(vim.fn.getqflist()[2].text, "on b")
   end)
 end)
 
-describe("the card beside the list", function()
-  ---@return string
-  local function card()
-    local panes = vim.tbl_filter(function(win)
-      return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "markdown"
-    end, helpers.floats())
-    return panes[1] and helpers.text(vim.api.nvim_win_get_buf(panes[1])) or ""
-  end
-
-  ---@param line integer
-  local function move_to(line)
-    vim.api.nvim_win_set_cursor(0, { line, 0 })
-    vim.api.nvim_exec_autocmds("CursorMoved", { buffer = vim.api.nvim_get_current_buf() })
-  end
-
-  it("shows the comment the cursor is on, and follows it", function()
-    vim.cmd("CommentList")
-    expect.equality(card(), "on a")
-    move_to(2)
-    expect.equality(card(), "on c")
-    move_to(1)
-    expect.equality(card(), "on a")
+describe("quickfix navigation", function()
+  it("moves through entries without opening a card or moving the source cursor", function()
+    vim.api.nvim_win_set_cursor(0, { 1, 0 })
+    local source_win = vim.api.nvim_get_current_win()
+    vim.cmd.CommentList()
+    vim.cmd("normal j")
+    expect.equality(vim.api.nvim_win_get_cursor(0)[1], 2)
+    expect.equality(vim.fn.getqflist({ idx = 0 }).idx, 1)
+    expect.equality(vim.api.nvim_win_get_cursor(source_win)[1], 1)
+    expect.equality(#helpers.every_float(), 0)
   end)
 
-  it("dims what is above it, leaving the list readable", function()
-    vim.cmd("CommentList")
-    local dim = vim.tbl_filter(function(win)
+  it("jumps on <CR> without opening a card", function()
+    vim.cmd.CommentList()
+    vim.cmd("normal j")
+    vim.cmd("normal \r")
+    expect.equality(vim.api.nvim_get_current_buf(), source)
+    expect.equality(vim.api.nvim_win_get_cursor(0)[1], 3)
+    expect.equality(#helpers.every_float(), 0)
+  end)
+
+  it("keeps the selected quickfix row when saving a card opened from source", function()
+    vim.cmd.CommentList()
+    local qf_win = vim.api.nvim_get_current_win()
+    vim.api.nvim_win_set_cursor(qf_win, { 2, 0 })
+    vim.cmd("wincmd k")
+    vim.cmd.Comment()
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "revised from source" })
+    vim.cmd.write()
+    expect.equality(vim.api.nvim_win_get_cursor(qf_win)[1], 2)
+    expect.equality(vim.fn.getqflist()[1].text, "revised from source")
+  end)
+
+  it("refreshes the list when editing from the source after a jump", function()
+    vim.cmd.CommentList()
+    vim.cmd("normal \r")
+    expect.equality(#helpers.every_float(), 0)
+    vim.cmd.Comment()
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "revised from source" })
+    vim.cmd.write()
+    expect.equality(vim.fn.getqflist()[1].text, "revised from source")
+    vim.cmd.quit()
+  end)
+
+  it(":Comment edits the cursor row without moving the source cursor", function()
+    local source_win = vim.api.nvim_get_current_win()
+    vim.api.nvim_win_set_cursor(source_win, { 1, 0 })
+    vim.cmd.CommentList()
+    vim.cmd("normal j")
+    vim.cmd.Comment()
+    expect.equality(helpers.text(), "on c")
+    expect.equality(vim.api.nvim_win_get_cursor(source_win)[1], 1)
+    local dim = vim.iter(helpers.every_float()):find(function(win)
       return vim.w[win].scratch_comments_backdrop
-    end, helpers.every_float())
-    expect.equality(#dim, 1)
-    local config = vim.api.nvim_win_get_config(dim[1])
-    expect.equality(config.height < vim.o.lines, true)
-    expect.equality(config.height < vim.fn.win_screenpos(0)[1], true)
+    end)
+    local config = vim.api.nvim_win_get_config(dim)
+    expect.equality(config.relative, "win")
+    expect.equality(config.win, source_win)
+    expect.equality(config.height, vim.api.nvim_win_get_height(source_win))
+    local qf_win = vim.fn.getqflist({ winid = 0 }).winid
+    expect.equality(
+      vim.fn.win_screenpos(source_win)[1] + config.height <= vim.fn.win_screenpos(qf_win)[1],
+      true
+    )
+    vim.cmd.quit()
+    vim.wait(0)
+    expect.equality(vim.api.nvim_get_current_win(), qf_win)
+    expect.equality(vim.api.nvim_win_get_cursor(source_win)[1], 1)
   end)
 
-  ---@return vim.api.keyset.win_config
-  local function card_config()
-    local panes = vim.tbl_filter(function(win)
-      return vim.bo[vim.api.nvim_win_get_buf(win)].filetype == "markdown"
-    end, helpers.floats())
-    return vim.api.nvim_win_get_config(panes[1])
-  end
-
-  it("is measured again when the editor resizes", function()
-    local columns, lines = vim.o.columns, vim.o.lines
-    vim.o.lines = 44
-    vim.cmd("CommentList")
-    local before = card_config()
-    vim.o.lines = 24
-    vim.api.nvim_exec_autocmds("VimResized", {})
-    local after = card_config()
-    -- A shorter editor leaves less room above the list, so the card moves up
-    -- instead of covering it.
-    expect.equality(after.row < before.row, true)
-    expect.equality(after.row + after.height + 1 <= vim.fn.win_screenpos(0)[1], true)
-    vim.o.columns, vim.o.lines = columns, lines
+  it("does not jump away from unsaved card edits", function()
+    local source_win = vim.api.nvim_get_current_win()
+    vim.api.nvim_win_set_cursor(source_win, { 1, 0 })
+    vim.cmd.CommentList()
+    local qf_win = vim.api.nvim_get_current_win()
+    vim.cmd.Comment()
+    local card_win = vim.api.nvim_get_current_win()
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "unsaved" })
+    vim.api.nvim_set_current_win(qf_win)
+    vim.api.nvim_win_set_cursor(qf_win, { 2, 0 })
+    vim.cmd("normal \r")
+    expect.equality(vim.api.nvim_get_current_win(), qf_win)
+    expect.equality(vim.api.nvim_win_get_cursor(source_win)[1], 1)
+    expect.equality(helpers.text(vim.api.nvim_win_get_buf(card_win)), "unsaved")
+    expect.equality(helpers.notified()[#helpers.notified()], "Save or discard the comment first")
+    vim.api.nvim_set_current_win(card_win)
+    vim.cmd("q!")
   end)
 
-  it("keeps the focus in the list", function()
-    vim.cmd("CommentList")
+  it("keeps another editing split visible behind the card", function()
+    vim.cmd.vsplit()
+    vim.cmd.CommentList()
+    vim.cmd.Comment()
+    local dim = vim.iter(helpers.every_float()):find(function(win)
+      return vim.w[win].scratch_comments_backdrop
+    end)
+    local config = vim.api.nvim_win_get_config(dim)
+    expect.equality(config.relative, "win")
+    expect.equality(config.width < vim.o.columns, true)
+    expect.equality(vim.api.nvim_win_get_buf(config.win), source)
+  end)
+
+  it("has nothing to dismiss on <Esc> before opening a card", function()
+    vim.cmd.CommentList()
+    vim.cmd([[execute "normal \<Esc>"]])
+    expect.equality(vim.bo.buftype, "quickfix")
+    expect.equality(#helpers.every_float(), 0)
+  end)
+
+  it("closes a clean editor on <Esc> from the list, but preserves unsaved edits", function()
+    vim.cmd.CommentList()
+    local qf_win = vim.api.nvim_get_current_win()
+    vim.cmd.Comment()
+    local comment_buf = vim.api.nvim_get_current_buf()
+    vim.api.nvim_set_current_win(qf_win)
+    vim.api.nvim_buf_set_lines(comment_buf, 0, -1, false, { "unsaved" })
+    vim.cmd([[execute "normal \<Esc>"]])
+    expect.equality(#helpers.floats(), 2)
+    expect.equality(helpers.notified()[#helpers.notified()], "Save with :w, or discard with :q!")
+    vim.bo[comment_buf].modified = false
+    vim.cmd([[execute "normal \<Esc>"]])
+    expect.equality(#helpers.every_float(), 0)
     expect.equality(vim.bo.buftype, "quickfix")
   end)
 
-  it("goes away with the list", function()
-    vim.cmd("CommentList")
-    vim.api.nvim_exec_autocmds("BufLeave", { buffer = vim.api.nvim_get_current_buf() })
+  it("does not leave any card behind when the list closes", function()
+    vim.cmd.CommentList()
+    vim.cmd.cclose()
     expect.equality(#helpers.every_float(), 0)
   end)
 end)
