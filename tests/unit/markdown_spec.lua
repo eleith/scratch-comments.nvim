@@ -32,7 +32,7 @@ describe("markdown", function()
     expect.equality(
       rendered,
       text({
-        "Comments:",
+        "# Comments",
         "",
         "## lua/app.lua",
         "",
@@ -82,7 +82,7 @@ describe("markdown", function()
     expect.equality(
       markdown.render({}, { orphan }),
       text({
-        "Comments:",
+        "# Comments",
         "",
         "## Orphaned",
         "",

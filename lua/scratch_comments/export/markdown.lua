@@ -17,7 +17,7 @@ end
 ---@param orphans ScratchComment[]
 ---@return string
 function M.render(views, orphans)
-  local lines = { "Comments:", "" }
+  local lines = { "# Comments", "" }
 
   local current_file = nil
   for _, comment in ipairs(views) do

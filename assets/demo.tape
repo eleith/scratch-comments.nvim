@@ -51,9 +51,13 @@ Enter
 Hide
 Type ":silent %delete _"
 Enter
+# Clear the cleanup command before recording resumes.
+Ctrl+L
+Sleep 200ms
 Show
 Sleep 1s
-Type '"+p'
+# Replace the empty line, leaving no blank line before or after the paste.
+Type 'ggV"+p'
 Sleep 1s
 Type "gg"
 Ctrl+L
