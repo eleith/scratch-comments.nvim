@@ -310,6 +310,24 @@ describe("the comment list manager", function()
     vim.cmd.cclose()
   end)
 
+  it("deletes a filtered orphan directly from quickfix", function()
+    vim.cmd("1d")
+    helpers.text_changed()
+    vim.cmd("CommentList 1")
+    local qf_win = vim.api.nvim_get_current_win()
+    expect.equality(#vim.fn.getqflist(), 1)
+    expect.equality(
+      vim.fn.getqflist()[1].user_data.scratch_comments_id,
+      vim.iter(store.all()):find(function(comment)
+        return comment.comment == "on a"
+      end).id
+    )
+    vim.cmd.CommentDelete()
+    expect.equality(#store.all(), 1)
+    expect.equality(store.all()[1].comment, "on c")
+    expect.equality(vim.api.nvim_win_is_valid(qf_win), false)
+  end)
+
   it("deletes an inactive comment from the list", function()
     vim.cmd.cclose()
     vim.api.nvim_set_current_buf(source)

@@ -65,10 +65,12 @@ Requires Neovim 0.12 or newer.
                         list only.
 
                                                                *:CommentDelete*
-:CommentDelete          Delete the comment shown in an open card, whether
-                        focus is in the card or the built-in quickfix list.
-                        With no card open, nothing is deleted. Save or discard
-                        unsaved edits first.
+:CommentDelete          In the built-in quickfix list opened by |:CommentList|,
+                        delete the comment under the cursor without opening
+                        its card. Elsewhere, delete the comment in the open
+                        card. A different quickfix list is never a target.
+                        Save or discard unsaved edits in the targeted card
+                        first.
 
                                                               *:CommentExport*
 :CommentExport[!] [format]
@@ -115,7 +117,8 @@ orphan). A completed ordinary file reload with mismatched text also makes a
 parked comment inactive. Inactive comments are listed last in |:CommentList|
 and in an "Orphaned" section of the export; |undo| restores an extmark whose
 buffer is still present. Delete an inactive comment with |:CommentDelete|
-while its card is open, or open its card with <CR> and save it empty.
+from the built-in quickfix list or its open card, or open it with <CR> and
+save it empty.
 
 In tmux you may need to set the clipboard to OSC 52 yourself: >lua
     vim.g.clipboard = "osc52"

@@ -269,17 +269,26 @@ refresh = function(id, index, expected_id)
   vim.api.nvim_win_set_cursor(qf.winid, { row, 0 })
 end
 
--- Delete only the comment displayed in an open editor, never one inferred
--- from the cursor in a file or the selected quickfix row.
-function M.delete_open()
+-- From our quickfix list, use the cursor row (not the last-jumped quickfix
+-- index). Elsewhere, an open card identifies the comment to delete.
+function M.delete_selected()
   local open = window.current()
-  local index = selected()
-  local id = open and open.id
-  if not id then
-    notify.warn("No comment card open")
+  local index, selected_id = selected()
+  if vim.bo.buftype == "quickfix" and not index then
+    notify.warn("Not a Scratch Comments list")
     return
   end
-  if open and vim.bo[vim.api.nvim_win_get_buf(open.comment_win)].modified then
+  local id
+  if index then
+    id = selected_id
+  else
+    id = open and open.id
+  end
+  if not id then
+    notify.warn(index and "This comment is gone" or "No comment card open")
+    return
+  end
+  if open and open.id == id and vim.bo[vim.api.nvim_win_get_buf(open.comment_win)].modified then
     notify.warn("Save or discard the comment first")
     return
   end
@@ -295,9 +304,9 @@ function M.delete_open()
   elseif open and open.on_saved then
     open.on_saved()
   end
-  if open then
+  if open and open.id == id then
     if index then
-      -- Deleting from the list leaves focus there, even if its card was focused.
+      -- A command run from the list should leave focus there.
       window.close()
     else
       vim.api.nvim_win_close(open.comment_win, true)

@@ -79,7 +79,7 @@ it, pipe it to a command, or edit it:
 | --- | --- |
 | `:Comment` | Add a comment on the current line or range, or edit one already on that exact range |
 | `:CommentList [filter]` | Put comments in the quickfix list and open it, fuzzy matching `filter` |
-| `:CommentDelete` | Delete the comment in the open card |
+| `:CommentDelete` | Delete the cursor row in the built-in quickfix list, or the open card elsewhere |
 | `:CommentExport[!] [format]` | Copy all comments to the clipboard as `markdown` (default) or `json`. `!` opens them in a scratch buffer |
 | `:CommentToggle [on\|off]` | Show or hide the comment signs |
 | `:CommentClear` | Delete every comment |
@@ -100,9 +100,10 @@ vim.keymap.set("n", "<leader>cx", "<Cmd>CommentExport<CR>", { desc = "Copy comme
 `:CommentList` puts all your comments in the quickfix list. move through them
 with `j`/`k` without moving the source cursor or opening a card. `<CR>` jumps
 to the source when the comment has a location, then opens its card over the
-file, leaving quickfix visible. `:w` saves; `:CommentDelete` deletes the comment in an open card, even if you
-focus the list again. `<Esc>` closes a clean card; unsaved edits need `:w` or
-`:q!`. an orphan has no line to jump to, so its editor returns to the list.
+file, leaving quickfix visible. `:w` saves; `:CommentDelete` deletes the
+comment under the quickfix cursor, or the open card when outside the list.
+`<Esc>` closes a clean card; unsaved edits need `:w` or `:q!`. an orphan has no
+line to jump to, so its editor returns to the list.
 give `:CommentList` an argument to fuzzy match text, snippet or path:
 
 ```vim
@@ -122,8 +123,8 @@ any quickfix viewer works:
 
 comments stay when you close a buffer (`:bd`, `:bw`). open the same source
 again and they'll pick up where they left off if the text is still on the same
-lines. delete one with `:CommentDelete` while its card is open, or save its
-comment empty. `:CommentClear` deletes them all. to keep them after exiting neovim,
+lines. delete one from the built-in quickfix list with `:CommentDelete`, from
+its open card, or by saving its comment empty. `:CommentClear` deletes them all. to keep them after exiting neovim,
 export them to a file.
 
 the signs share the sign column with plugins like gitsigns, and can cover their
@@ -131,8 +132,8 @@ signs. `:CommentToggle` hides ours when you need to see theirs.
 
 if the lines a comment is on are deleted, it becomes an orphan. orphans are
 listed last in `:CommentList` and in an "Orphaned" section of the export. undo
-restores them while the buffer is open. delete one with `:CommentDelete`
-while its card is open.
+restores them while the buffer is open. delete one from the built-in quickfix
+list with `:CommentDelete`, or from its open card.
 
 ## colors
 
@@ -160,7 +161,7 @@ vim.api.nvim_set_hl(0, "ScratchCommentBackdrop", { bg = "NONE" })
 local scratch = require("scratch_comments")
 
 scratch.add(start_line, end_line)  -- default: the cursor line
-scratch.delete()                   -- comment in the open card
+scratch.delete()                   -- quickfix cursor row or open card
 scratch.list()
 scratch.render(format)             -- "markdown" (default) or "json"
 scratch.export(format, in_buffer)  -- copy, or open in a scratch buffer

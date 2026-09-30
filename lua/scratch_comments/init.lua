@@ -17,7 +17,7 @@ M.render = export.render
 M.export = export.export
 
 M.list = list.open
-M.delete = list.delete_open
+M.delete = list.delete_selected
 
 -- Kept so configs that call it keep working; the commands need no setup.
 function M.setup() end
